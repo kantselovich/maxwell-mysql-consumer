@@ -1,0 +1,91 @@
+name: maxwell-poc
+
+x-app: &app
+  image: maxwell-poc-swift:phase1
+  environment:
+    SOURCE_HOST: mysql84
+    TARGET_HOST: mysql57
+    PUBSUB_HOST: pubsub
+    ARTIFACT_DIR: /artifacts
+
+services:
+  mysql84:
+    image: mysql:8.4.8-oracle
+    environment:
+      MYSQL_ROOT_PASSWORD: root-local-only
+    command: ["--server-id=84", "--log-bin=binlog", "--binlog-format=ROW", "--binlog-row-image=FULL", "--binlog-expire-logs-seconds=604800"]
+    volumes:
+      - mysql84-data:/var/lib/mysql
+      - ./docker/mysql84/init.sql:/docker-entrypoint-initdb.d/01-users.sql:ro
+    ports: ["127.0.0.1:13384:3306"]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=root-local-only mysql -uroot -h127.0.0.1 -e 'SELECT 1'"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+  mysql57:
+    image: mysql:5.7.42-debian
+    platform: linux/amd64
+    command: ["--innodb-use-native-aio=0"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root-local-only
+    volumes:
+      - mysql57-data:/var/lib/mysql
+      - ./docker/mysql57/init.sql:/docker-entrypoint-initdb.d/01-users.sql:ro
+    ports: ["127.0.0.1:13357:3306"]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=root-local-only mysql -uroot -h127.0.0.1 -e 'SELECT 1'"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:543.0.0-emulators
+    platform: linux/amd64
+    command: ["gcloud", "beta", "emulators", "pubsub", "start", "--project=local-cdc", "--host-port=0.0.0.0:8085"]
+    ports: ["127.0.0.1:18085:8085"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 8085), 2).close()"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+  pubsub-init:
+    <<: *app
+    command: ["init"]
+    depends_on:
+      pubsub: {condition: service_healthy}
+  maxwell:
+    image: maxwell-poc-maxwell:1.46.0-pubsub
+    build: ./docker/maxwell
+    command: ["bin/maxwell", "--config=/etc/maxwell/config.properties"]
+    volumes:
+      - ./docker/maxwell/config.properties:/etc/maxwell/config.properties:ro
+    depends_on:
+      mysql84: {condition: service_healthy}
+      pubsub-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/diagnostic"]
+      interval: 5s
+      timeout: 5s
+      retries: 36
+  consumer:
+    <<: *app
+    build: .
+    command: ["observe"]
+    depends_on:
+      maxwell: {condition: service_healthy}
+      mysql57: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/cdc-poc", "health"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+  e2e:
+    <<: *app
+    profiles: ["test"]
+    command: ["probe"]
+    volumes:
+      - ./artifacts:/artifacts
+
+volumes:
+  mysql84-data:
+  mysql57-data:

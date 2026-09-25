@@ -1,0 +1,32 @@
+syntax = "proto3";
+package google.pubsub.v1;
+// Deliberately narrow wire-compatible projection of the public Pub/Sub v1 API.
+// Field numbers: https://github.com/googleapis/googleapis/blob/master/google/pubsub/v1/pubsub.proto
+// Unknown fields are preserved by SwiftProtobuf. This is not a complete GCP SDK.
+message Empty {}
+message Topic { string name = 1; }
+message Subscription {
+  string name = 1;
+  string topic = 2;
+  int32 ack_deadline_seconds = 5;
+  bool enable_message_ordering = 10;
+}
+message GetSubscriptionRequest { string subscription = 1; }
+message DeleteSubscriptionRequest { string subscription = 1; }
+message PubsubMessage {
+  bytes data = 1;
+  map<string, string> attributes = 2;
+  string message_id = 3;
+  string ordering_key = 5;
+}
+message PublishRequest { string topic = 1; repeated PubsubMessage messages = 2; }
+message PublishResponse { repeated string message_ids = 1; }
+message ReceivedMessage { string ack_id = 1; PubsubMessage message = 2; int32 delivery_attempt = 3; }
+message PullRequest { string subscription = 1; bool return_immediately = 2; int32 max_messages = 3; }
+message PullResponse { repeated ReceivedMessage received_messages = 1; }
+message AcknowledgeRequest { string subscription = 1; repeated string ack_ids = 2; }
+message ModifyAckDeadlineRequest {
+  string subscription = 1;
+  int32 ack_deadline_seconds = 3;
+  repeated string ack_ids = 4;
+}

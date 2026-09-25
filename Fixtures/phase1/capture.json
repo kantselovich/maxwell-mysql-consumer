@@ -1,0 +1,24 @@
+{
+  "identities": [
+    "local-mysql84-history-1/binlog.000003:347159/ddl",
+    "local-mysql84-history-1/binlog.000003:347600/row:0",
+    "local-mysql84-history-1/binlog.000003:347600/row:1",
+    "local-mysql84-history-1/binlog.000003:347600/commit",
+    "local-mysql84-history-1/binlog.000003:347951/row:0",
+    "local-mysql84-history-1/binlog.000003:348102/commit",
+    "local-mysql84-history-1/binlog.000003:348442/commit"
+  ],
+  "payloads": [
+    "{\"type\":\"table-create\",\"database\":\"poc\",\"table\":\"probe_8d8ab3b5bc1e42088add7c9f39b1d592\",\"def\":{\"database\":\"poc\",\"charset\":\"utf8mb4\",\"table\":\"probe_8d8ab3b5bc1e42088add7c9f39b1d592\",\"primary-key\":[\"id\"],\"columns\":[{\"type\":\"int\",\"name\":\"id\",\"signed\":true},{\"type\":\"varchar\",\"name\":\"value\",\"charset\":\"utf8mb4\"}]},\"ts\":1790374070000,\"sql\":\"CREATE TABLE poc.probe_8d8ab3b5bc1e42088add7c9f39b1d592 (id INT PRIMARY KEY, value VARCHAR(100) NOT NULL) ENGINE=InnoDB\",\"position\":\"binlog.000003:347159\"}",
+    "{\"database\":\"poc\",\"table\":\"probe_8d8ab3b5bc1e42088add7c9f39b1d592\",\"type\":\"insert\",\"ts\":1790374070,\"xid\":7986,\"xoffset\":0,\"position\":\"binlog.000003:347600\",\"primary_key\":[1],\"primary_key_columns\":[\"id\"],\"data\":{\"id\":1,\"value\":\"first\"}}",
+    "{\"database\":\"poc\",\"table\":\"probe_8d8ab3b5bc1e42088add7c9f39b1d592\",\"type\":\"insert\",\"ts\":1790374070,\"xid\":7986,\"xoffset\":1,\"position\":\"binlog.000003:347600\",\"primary_key\":[2],\"primary_key_columns\":[\"id\"],\"data\":{\"id\":2,\"value\":\"second\"}}",
+    "{\"database\":\"poc\",\"table\":\"probe_8d8ab3b5bc1e42088add7c9f39b1d592\",\"type\":\"insert\",\"ts\":1790374070,\"xid\":7986,\"commit\":true,\"position\":\"binlog.000003:347600\",\"primary_key\":[3],\"primary_key_columns\":[\"id\"],\"data\":{\"id\":3,\"value\":\"third\"}}",
+    "{\"database\":\"poc\",\"table\":\"probe_8d8ab3b5bc1e42088add7c9f39b1d592\",\"type\":\"update\",\"ts\":1790374070,\"xid\":7988,\"xoffset\":0,\"position\":\"binlog.000003:347951\",\"primary_key\":[1],\"primary_key_columns\":[\"id\"],\"data\":{\"id\":1,\"value\":\"changed\"},\"old\":{\"value\":\"first\"}}",
+    "{\"database\":\"poc\",\"table\":\"probe_8d8ab3b5bc1e42088add7c9f39b1d592\",\"type\":\"update\",\"ts\":1790374070,\"xid\":7988,\"commit\":true,\"position\":\"binlog.000003:348102\",\"primary_key\":[1],\"primary_key_columns\":[\"id\"],\"data\":{\"id\":1,\"value\":\"changed-again\"},\"old\":{\"value\":\"changed\"}}",
+    "{\"database\":\"poc\",\"table\":\"probe_8d8ab3b5bc1e42088add7c9f39b1d592\",\"type\":\"delete\",\"ts\":1790374070,\"xid\":7991,\"commit\":true,\"position\":\"binlog.000003:348442\",\"primary_key\":[3],\"primary_key_columns\":[\"id\"],\"data\":{\"id\":3,\"value\":\"third\"}}"
+  ],
+  "sourceVersion": "8.4.8",
+  "startPosition": "binlog.000003:347080",
+  "table": "probe_8d8ab3b5bc1e42088add7c9f39b1d592",
+  "targetVersion": "5.7.42"
+}
