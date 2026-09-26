@@ -50,6 +50,8 @@ Completed locally on 2026-09-25. See [Phase 1 results](PHASE_1_RESULTS.md) for t
 
 ## Phase 2 — Replicate schema and data through Swift
 
+Completed locally on 2026-09-25. See [Phase 2 results](PHASE_2_RESULTS.md) for evidence, the bounded SQL contract, and capture compatibility fixes. Run the isolated gate with `make phase2`.
+
 - Implement the initial DDL subset: `CREATE DATABASE`, `CREATE TABLE`, `ALTER TABLE ADD COLUMN` for nullable/defaulted columns, basic index creation/removal, and `DROP TABLE`. Restrict operations to the configured application database.
 - Start fixtures with a charset/collation supported on both versions. Validate DDL against the supported subset before execution; reject unsupported 8.4 collations or syntax explicitly. Compare semantic schema definitions rather than literal `SHOW CREATE TABLE` text.
 - Apply insert/update/delete using bound values and quoted identifiers. Cover composite keys and primary-key updates using the old key. Preserve NULL, integer/decimal precision, Unicode, binary values, JSON, and timestamp precision. Maxwell supplies distinct [DML and DDL event formats](https://maxwells-daemon.io/dataformat/).

@@ -7,7 +7,7 @@ public struct Settings {
     public let sourceHost = ProcessInfo.processInfo.environment["SOURCE_HOST"] ?? "mysql84"
     public let targetHost = ProcessInfo.processInfo.environment["TARGET_HOST"] ?? "mysql57"
     public let pubsubHost = ProcessInfo.processInfo.environment["PUBSUB_HOST"] ?? "pubsub"
-    public let sourceID = "local-mysql84-history-1"
+    public let sourceID = ProcessInfo.processInfo.environment["SOURCE_ID"] ?? "local-mysql84-history-1"
     public let artifacts = ProcessInfo.processInfo.environment["ARTIFACT_DIR"] ?? "/artifacts"
     public init() {}
 }

@@ -1,12 +1,14 @@
 name: maxwell-poc
 
 x-app: &app
-  image: maxwell-poc-swift:phase1
+  image: maxwell-poc-swift:phase2
   environment:
     SOURCE_HOST: mysql84
     TARGET_HOST: mysql57
     PUBSUB_HOST: pubsub
     ARTIFACT_DIR: /artifacts
+    SOURCE_ID: ${SOURCE_ID:-local-mysql84-history-1}
+    CONSUMER_MODE: ${CONSUMER_MODE:-apply}
 
 services:
   mysql84:
@@ -17,7 +19,7 @@ services:
     volumes:
       - mysql84-data:/var/lib/mysql
       - ./docker/mysql84/init.sql:/docker-entrypoint-initdb.d/01-users.sql:ro
-    ports: ["127.0.0.1:13384:3306"]
+    ports: ["127.0.0.1:${SOURCE_PORT:-13384}:3306"]
     healthcheck:
       test: ["CMD-SHELL", "MYSQL_PWD=root-local-only mysql -uroot -h127.0.0.1 -e 'SELECT 1'"]
       interval: 3s
@@ -26,13 +28,13 @@ services:
   mysql57:
     image: mysql:5.7.42-debian
     platform: linux/amd64
-    command: ["--innodb-use-native-aio=0"]
+    command: ["--innodb-use-native-aio=0", "--explicit-defaults-for-timestamp=ON"]
     environment:
       MYSQL_ROOT_PASSWORD: root-local-only
     volumes:
       - mysql57-data:/var/lib/mysql
       - ./docker/mysql57/init.sql:/docker-entrypoint-initdb.d/01-users.sql:ro
-    ports: ["127.0.0.1:13357:3306"]
+    ports: ["127.0.0.1:${TARGET_PORT:-13357}:3306"]
     healthcheck:
       test: ["CMD-SHELL", "MYSQL_PWD=root-local-only mysql -uroot -h127.0.0.1 -e 'SELECT 1'"]
       interval: 3s
@@ -42,7 +44,7 @@ services:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:543.0.0-emulators
     platform: linux/amd64
     command: ["gcloud", "beta", "emulators", "pubsub", "start", "--project=local-cdc", "--host-port=0.0.0.0:8085"]
-    ports: ["127.0.0.1:18085:8085"]
+    ports: ["127.0.0.1:${PUBSUB_PORT:-18085}:8085"]
     healthcheck:
       test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 8085), 2).close()"]
       interval: 3s
@@ -70,7 +72,7 @@ services:
   consumer:
     <<: *app
     build: .
-    command: ["observe"]
+    command: ["${CONSUMER_MODE:-apply}"]
     depends_on:
       maxwell: {condition: service_healthy}
       mysql57: {condition: service_healthy}
@@ -84,7 +86,7 @@ services:
     profiles: ["test"]
     command: ["probe"]
     volumes:
-      - ./artifacts:/artifacts
+      - ${ARTIFACT_PATH:-./artifacts}:/artifacts
 
 volumes:
   mysql84-data:

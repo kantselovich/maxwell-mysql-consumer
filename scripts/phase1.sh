@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+export CONSUMER_MODE=observe
 mkdir -p artifacts
 replay_container="maxwell-poc-replay-$$"
 replay_started=false

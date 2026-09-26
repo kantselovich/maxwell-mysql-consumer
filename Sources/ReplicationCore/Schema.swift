@@ -1,0 +1,317 @@
+import Foundation
+
+public func quoteIdentifier(_ name: String) throws -> String {
+    guard name.utf8.count <= 64, name.range(of: #"^[A-Za-z_][A-Za-z0-9_]*$"#, options: .regularExpression) != nil else {
+        throw POCError("Unsupported identifier: \(name)")
+    }
+    return "`\(name)`"
+}
+
+public struct Column: Codable, Equatable {
+    public var name: String
+    public var type: String
+    public var nullable: Bool
+    public var defaultValue: String?
+    public var collation: String?
+    public var extra: String
+    public init(name: String, type: String, nullable: Bool = true, defaultValue: String? = nil,
+                collation: String? = nil, extra: String = "") {
+        self.name = name; self.type = Self.normalizeType(type); self.nullable = nullable
+        self.defaultValue = defaultValue; self.collation = collation; self.extra = extra
+    }
+    public static func normalizeType(_ type: String) -> String {
+        type.lowercased().replacingOccurrences(of: #"\b(tinyint|smallint|mediumint|int|bigint)\([0-9]+\)"#,
+                                               with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: #"\b(datetime|timestamp|time)\(0\)"#, with: "$1", options: .regularExpression)
+    }
+    public var binary: Bool { type.hasPrefix("blob") || type.hasPrefix("binary") || type.hasPrefix("varbinary") }
+}
+public struct TableIndex: Codable, Equatable {
+    public var name: String
+    public var columns: [String]
+    public var unique: Bool
+    public init(name: String, columns: [String], unique: Bool = false) {
+        self.name = name; self.columns = columns; self.unique = unique
+    }
+}
+public struct Schema: Codable, Equatable {
+    public var exists: Bool
+    public var collation: String?
+    public var engine: String?
+    public var columns: [Column]
+    public var indexes: [TableIndex]
+    public init(exists: Bool = false, collation: String? = nil, engine: String? = nil,
+                columns: [Column] = [], indexes: [TableIndex] = []) {
+        self.exists = exists; self.collation = collation; self.engine = engine
+        self.columns = columns; self.indexes = indexes.sorted { $0.name < $1.name }
+    }
+    public var primaryKey: [String] { indexes.first { $0.name == "PRIMARY" }?.columns ?? [] }
+    public func encoded() throws -> String {
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        return String(decoding: try encoder.encode(self), as: UTF8.self)
+    }
+}
+
+public struct DDLPlan {
+    public enum Change {
+        case database, create([Column], [TableIndex]), add(Column), addIndex(TableIndex), dropIndex(String), drop
+    }
+    public let table: String?
+    public let sql: String
+    public let change: Change
+    public func after(_ before: Schema) throws -> Schema {
+        var result = before
+        switch change {
+        case .database:
+            guard !before.exists else { throw POCError("Database already exists without a matching journal") }
+            result = Schema(exists: true, collation: "utf8mb4_unicode_ci")
+        case .create(let columns, let indexes):
+            guard !before.exists else { throw POCError("Table already exists without a matching journal") }
+            result = Schema(exists: true, collation: "utf8mb4_unicode_ci", engine: "InnoDB", columns: columns, indexes: indexes)
+        case .add(let column):
+            guard before.exists, !before.columns.contains(where: { $0.name == column.name }) else { throw POCError("ADD COLUMN precondition failed") }
+            result.columns.append(column)
+        case .addIndex(let index):
+            guard before.exists, !before.indexes.contains(where: { $0.name == index.name }),
+                  index.columns.allSatisfy({ key in before.columns.contains { $0.name == key } }) else { throw POCError("ADD INDEX precondition failed") }
+            result.indexes.append(index)
+        case .dropIndex(let name):
+            guard before.exists, before.indexes.contains(where: { $0.name == name }), name != "PRIMARY" else { throw POCError("DROP INDEX precondition failed") }
+            result.indexes.removeAll { $0.name == name }
+        case .drop:
+            guard before.exists else { throw POCError("DROP TABLE precondition failed") }
+            result = Schema()
+        }
+        result.indexes.sort { $0.name < $1.name }
+        return result
+    }
+}
+
+/// A deliberately small grammar, not a sanitizer for arbitrary SQL. Reconstructs
+/// statements from validated tokens; rejects comments, expressions and extra clauses.
+public enum DDLPolicy {
+    public static func parse(_ sql: String, database: String = "poc", eventType: String, table: String?) throws -> DDLPlan {
+        // MySQL 8.4 writes this exact non-executable suffix to DROP TABLE binlog
+        // queries. Other comments, including executable version comments, fail.
+        let statement = eventType == "table-drop"
+            ? sql.replacingOccurrences(of: #"\s*/\* generated by server \*/\s*;?\s*$"#, with: "", options: .regularExpression)
+            : sql
+        var parser = try DDLParser(sql: statement, database: database)
+        let plan = try parser.plan()
+        let expected: String
+        switch plan.change {
+        case .database: expected = "database-create"
+        case .create: expected = "table-create"
+        case .drop: expected = "table-drop"
+        default: expected = "table-alter"
+        }
+        guard expected == eventType, plan.table == table else { throw POCError("DDL SQL and event metadata disagree") }
+        return plan
+    }
+}
+
+private struct DDLParser {
+    var tokens: [String] = []
+    var offset = 0
+    let database: String
+    init(sql: String, database: String) throws {
+        self.database = database
+        _ = try quoteIdentifier(database)
+        // Only SQL single-quote doubling is supported; backslash escapes are rejected.
+        let pattern = #"\s+|`[A-Za-z_][A-Za-z0-9_]*`|'(?:[^'\\]|'')*'|[A-Za-z_][A-Za-z0-9_]*|-?[0-9]+(?:\.[0-9]+)?|[(),.;=]"#
+        let regex = try NSRegularExpression(pattern: pattern)
+        let ns = sql as NSString
+        var end = 0
+        for match in regex.matches(in: sql, range: NSRange(location: 0, length: ns.length)) {
+            guard match.range.location == end else { throw POCError("Unsupported SQL token") }
+            end = NSMaxRange(match.range)
+            let token = ns.substring(with: match.range)
+            if !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { tokens.append(token) }
+        }
+        guard end == ns.length else { throw POCError("Unsupported SQL token") }
+    }
+    mutating func eat(_ s: String) -> Bool {
+        if offset < tokens.count && tokens[offset].uppercased() == s { offset += 1; return true }
+        return false
+    }
+    mutating func need(_ s: String) throws { guard eat(s) else { throw POCError("Expected \(s) in supported DDL subset") } }
+    mutating func next() throws -> String {
+        guard offset < tokens.count else { throw POCError("Incomplete DDL") }
+        defer { offset += 1 }; return tokens[offset]
+    }
+    mutating func identifier() throws -> String {
+        let name = try next().replacingOccurrences(of: "`", with: "")
+        _ = try quoteIdentifier(name)
+        return name
+    }
+    mutating func tableName() throws -> String {
+        let first = try identifier()
+        if eat(".") {
+            guard first == database else { throw POCError("Cross-database DDL rejected") }
+            return try identifier()
+        }
+        return first
+    }
+    mutating func names() throws -> [String] {
+        try need("(")
+        var result = [try identifier()]
+        while eat(",") { result.append(try identifier()) }
+        try need(")")
+        guard Set(result).count == result.count else { throw POCError("Repeated index column") }
+        return result
+    }
+    func quoted(_ names: [String]) throws -> String { try names.map(quoteIdentifier).joined(separator: ", ") }
+    mutating func column() throws -> (Column, String, Bool) {
+        let name = try identifier()
+        var type = try next().lowercased()
+        let simple = ["tinyint", "smallint", "mediumint", "int", "bigint", "text", "blob", "json", "date"]
+        let sized = ["varchar", "char", "varbinary", "binary", "decimal", "datetime", "timestamp", "time"]
+        guard simple.contains(type) || sized.contains(type) else { throw POCError("Unsupported column type: \(type)") }
+        if eat("(") {
+            guard sized.contains(type) else { throw POCError("Unsupported type parameters") }
+            let size = try next()
+            guard let width = Int(size), String(width) == size else { throw POCError("Invalid type size") }
+            let base = type
+            let bounds: ClosedRange<Int>
+            switch base {
+            case "decimal": bounds = 1...65
+            case "datetime", "timestamp", "time": bounds = 0...6
+            case "char", "binary": bounds = 1...255
+            case "varchar": bounds = 1...16383
+            default: bounds = 1...65535
+            }
+            guard bounds.contains(width) else { throw POCError("Type size outside supported MySQL bounds") }
+            type += "(\(size)"
+            if eat(",") {
+                guard type.hasPrefix("decimal(") else { throw POCError("Unexpected scale") }
+                let scale = try next()
+                guard let value = Int(scale), String(value) == scale, (0...min(width, 30)).contains(value) else { throw POCError("Invalid scale") }
+                type += ",\(scale)"
+            } else if base == "decimal" {
+                type += ",0"
+            }
+            try need(")"); type += ")"
+        } else if ["varchar", "char", "varbinary", "binary", "decimal"].contains(type) {
+            throw POCError("Explicit length/precision required")
+        }
+        if eat("UNSIGNED") {
+            guard ["tinyint", "smallint", "mediumint", "int", "bigint"].contains(type) else { throw POCError("UNSIGNED requires integer") }
+            type += " unsigned"
+        }
+        var nullable = true
+        if eat("NOT") { try need("NULL"); nullable = false } else { _ = eat("NULL") }
+        var defaultValue: String?, defaultSQL = ""
+        if eat("DEFAULT") {
+            let value = try next()
+            if value.uppercased() == "NULL" {
+                guard nullable else { throw POCError("NOT NULL DEFAULT NULL") }
+            } else if value.hasPrefix("'") {
+                guard type.hasPrefix("varchar(") || type.hasPrefix("char(") else { throw POCError("String defaults supported only for CHAR/VARCHAR") }
+                defaultValue = String(value.dropFirst().dropLast()).replacingOccurrences(of: "''", with: "'")
+            } else {
+                guard ["tinyint", "smallint", "mediumint", "int", "bigint"].contains(type.replacingOccurrences(of: " unsigned", with: "")),
+                      value.range(of: #"^-?(0|[1-9][0-9]*)$"#, options: .regularExpression) != nil,
+                      value != "-0" else { throw POCError("Numeric defaults supported only as canonical integer literals") }
+                defaultValue = value
+            }
+            defaultSQL = " DEFAULT \(value)"
+        }
+        let primary = eat("PRIMARY")
+        if primary { try need("KEY"); nullable = false }
+        let collation = ["varchar", "char", "text"].contains(where: { type == $0 || type.hasPrefix($0 + "(") }) ? "utf8mb4_unicode_ci" : nil
+        let col = Column(name: name, type: type, nullable: nullable, defaultValue: defaultValue, collation: collation)
+        let sql = try quoteIdentifier(name) + " " + type + (nullable ? " NULL" : " NOT NULL") + defaultSQL
+        return (col, sql, primary)
+    }
+    mutating func plan() throws -> DDLPlan {
+        let qdb = try quoteIdentifier(database)
+        var table: String?, sql: String, change: DDLPlan.Change
+        if eat("CREATE") {
+            if eat("DATABASE") {
+                if eat("IF") { try need("NOT"); try need("EXISTS") }
+                guard try identifier() == database else { throw POCError("Database out of scope") }
+                try need("CHARACTER"); try need("SET"); _ = eat("=")
+                try need("UTF8MB4"); try need("COLLATE"); _ = eat("="); try need("UTF8MB4_UNICODE_CI")
+                sql = "CREATE DATABASE \(qdb) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"; change = .database
+            } else if eat("TABLE") {
+                let name = try tableName(); table = name
+                try need("(")
+                var columns: [Column] = [], indexes: [TableIndex] = [], definitions: [String] = []
+                repeat {
+                    if eat("PRIMARY") {
+                        try need("KEY"); let keys = try names()
+                        indexes.append(TableIndex(name: "PRIMARY", columns: keys, unique: true))
+                    } else if eat("INDEX") || eat("KEY") {
+                        let index = try identifier(); let keys = try names()
+                        indexes.append(TableIndex(name: index, columns: keys))
+                    } else {
+                        let (col, definition, primary) = try column()
+                        columns.append(col); definitions.append(definition)
+                        if primary { indexes.append(TableIndex(name: "PRIMARY", columns: [col.name], unique: true)) }
+                    }
+                } while eat(",")
+                try need(")")
+                try need("ENGINE"); _ = eat("="); try need("INNODB")
+                if eat("DEFAULT") || (offset < tokens.count && ["CHARSET", "CHARACTER"].contains(tokens[offset].uppercased())) {
+                    if eat("CHARACTER") { try need("SET") } else { try need("CHARSET") }
+                    _ = eat("="); try need("UTF8MB4"); try need("COLLATE"); _ = eat("="); try need("UTF8MB4_UNICODE_CI")
+                }
+                guard !columns.isEmpty, Set(columns.map(\.name)).count == columns.count,
+                      Set(indexes.map(\.name)).count == indexes.count,
+                      indexes.filter({ $0.name == "PRIMARY" }).count == 1,
+                      indexes.allSatisfy({ $0.columns.allSatisfy { key in columns.contains { $0.name == key } } }) else {
+                    throw POCError("Table requires distinct columns/indexes and exactly one valid primary key")
+                }
+                let pk = indexes.first { $0.name == "PRIMARY" }!.columns
+                for i in columns.indices where pk.contains(columns[i].name) {
+                    // MySQL 5.7 rejects explicitly NULL columns in a table-level
+                    // primary key; 8.4 normalizes them. Emit NOT NULL explicitly.
+                    let prefix = try quoteIdentifier(columns[i].name) + " " + columns[i].type
+                    definitions[i] = definitions[i].replacingOccurrences(of: prefix + " NULL", with: prefix + " NOT NULL", options: .anchored)
+                    columns[i].nullable = false
+                }
+                for index in indexes {
+                    definitions.append(try (index.name == "PRIMARY" ? "PRIMARY KEY" : "INDEX " + quoteIdentifier(index.name)) + " (" + quoted(index.columns) + ")")
+                }
+                sql = try "CREATE TABLE \(qdb)." + quoteIdentifier(name) + " (" + definitions.joined(separator: ", ") + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                change = .create(columns, indexes)
+            } else {
+                try need("INDEX"); let name = try identifier(); try need("ON"); let t = try tableName(); table = t
+                let keys = try names()
+                guard name != "PRIMARY" else { throw POCError("Reserved index name") }
+                sql = try "CREATE INDEX " + quoteIdentifier(name) + " ON \(qdb)." + quoteIdentifier(t) + " (" + quoted(keys) + ")"
+                change = .addIndex(TableIndex(name: name, columns: keys))
+            }
+        } else if eat("ALTER") {
+            try need("TABLE"); let t = try tableName(); table = t
+            let prefix = try "ALTER TABLE \(qdb)." + quoteIdentifier(t)
+            if eat("ADD") {
+                if eat("INDEX") || eat("KEY") {
+                    let name = try identifier(); let keys = try names()
+                    guard name != "PRIMARY" else { throw POCError("Reserved index name") }
+                    change = .addIndex(TableIndex(name: name, columns: keys))
+                    sql = try prefix + " ADD INDEX " + quoteIdentifier(name) + " (" + quoted(keys) + ")"
+                } else {
+                    _ = eat("COLUMN"); let (col, definition, primary) = try column()
+                    guard !primary, col.nullable || col.defaultValue != nil else { throw POCError("ADD requires nullable/defaulted non-key column") }
+                    change = .add(col); sql = prefix + " ADD COLUMN " + definition
+                }
+            } else {
+                try need("DROP"); try need("INDEX"); let name = try identifier()
+                change = .dropIndex(name); sql = try prefix + " DROP INDEX " + quoteIdentifier(name)
+            }
+        } else {
+            try need("DROP")
+            if eat("TABLE") {
+                let t = try tableName(); table = t; change = .drop
+                sql = try "DROP TABLE \(qdb)." + quoteIdentifier(t)
+            } else {
+                try need("INDEX"); let name = try identifier(); try need("ON"); let t = try tableName(); table = t
+                change = .dropIndex(name); sql = try "DROP INDEX " + quoteIdentifier(name) + " ON \(qdb)." + quoteIdentifier(t)
+            }
+        }
+        _ = eat(";")
+        guard offset == tokens.count else { throw POCError("Unsupported trailing DDL clauses") }
+        return DDLPlan(table: table, sql: sql, change: change)
+    }
+}

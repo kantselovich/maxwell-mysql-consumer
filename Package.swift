@@ -14,6 +14,7 @@ let package = Package(
     targets: [
         .target(name: "ReplicationCore"),
         .target(name: "MySQLTarget", dependencies: [
+            "ReplicationCore",
             .product(name: "MySQLNIO", package: "mysql-nio"),
             .product(name: "NIOPosix", package: "swift-nio"),
         ]),

@@ -11,6 +11,14 @@ RUN sed -i 's/if ( ddlPubsub != null )/if ( ddlPubsub != null \&\& ddlPubsub != 
     && mkdir /pubsub-patch \
     && javac -cp '/pubsub-lib/*:/maxwell-lib/*' -d /pubsub-patch /tmp/MaxwellPubsubProducer.java
 
+# Upstream blacklists standalone index DDL. Route it through a no-column-change
+# TableAlter so the normal schema history, filtering and publisher path are used.
+ADD --checksum=sha256:f1875b3b33e4a67ce56fcea8e82c83c449f94de45383e0d0d6ce25aa70b534c1 https://raw.githubusercontent.com/zendesk/maxwell/v1.46.0/src/main/java/com/zendesk/maxwell/schema/ddl/SchemaChange.java /tmp/SchemaChange.java
+COPY IndexDDL.java IndexDDLTest.java /tmp/
+RUN sed -i '/if ( matchesBlacklist(sql) )/i\        List<SchemaChange> indexChanges = IndexDDL.parse(currentDB, sql); if (indexChanges != null) return indexChanges;' /tmp/SchemaChange.java \
+    && javac -cp '/pubsub-lib/*:/maxwell-lib/*' -d /pubsub-patch /tmp/SchemaChange.java /tmp/IndexDDL.java /tmp/IndexDDLTest.java \
+    && java -cp '/pubsub-patch:/pubsub-lib/*:/maxwell-lib/*' com.zendesk.maxwell.schema.ddl.IndexDDLTest
+
 # Maxwell is Java: run it natively, even though its distribution image is amd64.
 FROM eclipse-temurin:21.0.7_6-jre-jammy
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*

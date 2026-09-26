@@ -20,7 +20,40 @@ enum Main {
             case "init": try await PhaseOne.initialize(pubsub)
             case "probe": try await PhaseOne.capture(pubsub, settings: settings)
             case "verify-replay": try await PhaseOne.verifyReplay(pubsub, settings: settings)
-            case "health": try await pubsub.checkSubscription("cdc-diagnostic")
+            case "phase2": try await PhaseTwo.run(pubsub, settings: settings)
+            case "recovery-tests": try await PhaseTwo.recovery(settings: settings)
+            case "health":
+                try await pubsub.checkSubscription("cdc-consumer")
+                if ProcessInfo.processInfo.environment["CONSUMER_MODE"] != "observe" {
+                    let db = Database()
+                    do {
+                        try await PhaseOne.connect(db, host: settings.targetHost)
+                        let lock = try await db.query("SELECT IS_USED_LOCK('cdc-applier-poc') AS owner")
+                        try PhaseOne.require(lock.first?["owner"] != nil, "Applier is not ready")
+                        await db.close()
+                    } catch { await db.close(); throw error }
+                }
+            case "apply":
+                let db = Database()
+                do {
+                    try await PhaseOne.connect(db, host: settings.targetHost)
+                    let applier = Applier(db: db, source: settings.sourceID)
+                    try await applier.initialize()
+                    print("READY serial target applier source=\(settings.sourceID)")
+                    while !Task.isCancelled {
+                        let batch = try await pubsub.pull("cdc-consumer", max: 1)
+                        for delivery in batch {
+                            try PhaseOne.require(delivery.orderingKey == "mysql84", "Unexpected ordering key")
+                            try await pubsub.deadline("cdc-consumer", ids: [delivery.ackID], seconds: 600)
+                            let applied = try await applier.apply(delivery.data)
+                            // Both mutation and durable metadata are committed at this point.
+                            try await pubsub.ack("cdc-consumer", ids: [delivery.ackID])
+                            print("\(applied ? "APPLIED" : "DEDUPLICATED") \(try MaxwellEvent(data: delivery.data).identity(source: settings.sourceID))")
+                        }
+                        if batch.isEmpty { try await Task.sleep(nanoseconds: 100_000_000) }
+                    }
+                    await db.close()
+                } catch { await db.close(); throw error }
             case "observe":
                 print("Phase 1 diagnostic observer: no target writes; cdc-consumer remains untouched")
                 while !Task.isCancelled {

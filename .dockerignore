@@ -3,3 +3,4 @@
 .swiftpm
 artifacts
 .env
+.upstream
