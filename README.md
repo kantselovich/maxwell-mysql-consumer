@@ -8,11 +8,16 @@ Phase 1 is validated: [results and compatibility findings](PLAN/PHASE_1_RESULTS.
 
 Phase 2 is validated: [schema/data replication results](PLAN/PHASE_2_RESULTS.md).
 
+Phase 3 is validated: [reusable harness and negative assertion results](PLAN/PHASE_3_RESULTS.md).
+
 ## Run
 
 Prerequisite: Docker with Compose v2 and enough resources to build Swift and run two databases plus Java services. A host Swift installation and GCP credentials are not required. First startup downloads images and builds dependencies; subsequent builds use Docker caching.
 
 ```sh
+make e2e      # Fresh isolated smoke suite: append, CRUD, schema change
+make e2e-checks # Smoke suite plus deliberate missing-event/wrong-value checks
+make mysql57-checks # Three fresh target DB starts, each with a warm restart
 make phase2   # Fresh isolated stack: schema/data convergence and recovery checks
 make up       # Build/start the default persistent stack with the applier
 make phase1   # Run compatibility checks and actual Maxwell binlog replay
@@ -23,7 +28,34 @@ make reset    # Delete only this Compose project's containers and volumes
 
 MySQL 5.7 and the emulator are pinned to amd64 images; Docker Desktop emulates these on Apple Silicon. Swift, MySQL 8.4, and Maxwell's Java runtime run natively on ARM. Ports bind to localhost: MySQL 8.4 `13384`, MySQL 5.7 `13357`, emulator `18085`. Credentials in Compose/init SQL are local test credentials only.
 
-The local target uses `mysql:5.7.42-debian` with native AIO disabled. The `5.7.44` Oracle Linux image crashed during initialization under this host's QEMU emulation. Validation against the deployed 5.7 patch version remains a follow-up check.
+The local target derives from digest-pinned `mysql:5.7.42-debian` with native AIO disabled. Its entrypoint uses the already-installed `setpriv` instead of `gosu`: the bundled Go-based `gosu` was observed hanging under QEMU at the root-to-mysql handoff. Upstream directory ownership, initialization and restart behavior are preserved; the server still runs as `mysql`, not root. The build fails if the expected entrypoint patch site changes. The `5.7.44` Oracle Linux image crashed during initialization under this host's QEMU emulation. Validation against the deployed 5.7 patch version remains a follow-up check.
+
+`make mysql57-checks` exercises three fresh-volume target starts, init-SQL credentials/grants, the server's non-root UID, and a warm restart retaining a written marker after each start. It uses an isolated project and ephemeral port; logs/results remain under `artifacts/maxwell-mysql57-checks-*/`. `KEEP_ON_FAILURE=1` also works for this check.
+
+## Reusable E2E harness (Phase 3)
+
+```sh
+make e2e SCENARIO=schema-change ROWS=40 SEED=123 WRITE_INTERVAL_MS=25
+KEEP_ON_FAILURE=1 make e2e SCENARIO=crud
+make e2e-checks
+```
+
+`SCENARIO` is `smoke` (default, all three), `append`, `crud` or `schema-change`. Workloads are deterministic for a given seed, with unique table names per run. Options: `ROWS` (default 12, 2–5000), `SEED` (default 42), `WRITE_INTERVAL_MS` (default 10), `CONVERGENCE_TIMEOUT` (default 60 seconds per marker), `DRAIN_SECONDS` (default 2), and `E2E_MAX_SECONDS` (default 300, host watchdog after startup). Increase timeouts for larger or deliberately slow workloads; SQL execution time adds to the requested pacing interval.
+
+Each run builds the images and starts a new Compose project with fresh volumes, a new source identity and ephemeral localhost ports. A source-only readiness table/marker must traverse the entire CDC path before scenarios start. A separate observer drains audit/DLQ subscriptions alongside the paced writer. The schema-change scenario alters the table halfway through the append workload, immediately updates the new column, and continues appending. Once writes stop, an ordered marker must reach both the audit stream and applied checkpoint; the observer continues through a bounded drain period.
+
+The generated manifest records every intended DDL operation and each row's full values/changed old values, including transient writes. Verification reconciles it with unique audit events and stored ledger payloads, then compares source and target against independently generated expected schemas and rows. It checks table inventory, columns/types/nullability/defaults, primary/secondary indexes, collation, final checkpoint, no pending DDL and no DLQ deliveries. Runtime failures are not converted into successful skips.
+
+`make e2e-checks` also launches two isolated **negative self-tests of the harness**, not consumer recovery tests:
+
+- `missing-event` suppresses an intended temporary insert/delete pair on the source. Source/target final rows still match the workload model; the independent event manifest must fail.
+- `wrong-value` changes one target value after the final marker. Event accounting still passes, but expected/source/target row comparison must fail.
+
+The underlying harness exits 1 in both cases. The self-test runner succeeds only when the recorded failure is exactly `event-manifest` or `row-mismatch`, respectively, and all required services remain healthy. Timeouts, startup errors and unexpected success fail the self-test. To see a normal nonzero failing invocation directly: `make e2e SCENARIO=crud HARNESS_FAULT=missing-event` (or `wrong-value`). Do not enable these injectors for a positive replication run.
+
+Evidence is under `artifacts/maxwell-e2e-*/`: configuration/seed, workload plans, expected event manifest, raw deliveries (including duplicates and any DLQ records), semantic schema/row comparisons, explicit diffs, ledger/journal/checkpoints, scenario and run JSON results, versions, build/startup/harness/service logs, container/image state and capture checkpoint. Per-service `*-container.json` and `*-processes.txt` preserve health-check history and process state before cleanup, including when startup fails before the harness launches. `host-result.json` distinguishes the host/self-test exit code from the actual harness exit code. Inspect `run-result.json` and `*-diffs.json` first on assertion failure, or `startup.log` and the affected service's diagnostics on startup failure.
+
+The host runner owns container lifecycle and the timeout; no Docker socket is mounted in Swift. Successful runs remove only their own containers/volumes and retain artifacts. `KEEP_ON_FAILURE=1` retains failed infrastructure and its volumes for inspection. Use the printed project name with `docker compose -p NAME logs`; when finished, `docker compose -p NAME down --volumes --remove-orphans` removes that disposable project. Existing Phase 1/2 stacks are not reset. Actual restart/outage injection, retry/DLQ recovery and the broader Phase 5 suite remain subsequent work; `make phase2` still runs the detailed type-boundary and target-journal regression checks.
 
 ## Phase 2 checks and contract
 

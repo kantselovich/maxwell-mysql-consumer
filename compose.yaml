@@ -1,8 +1,8 @@
 name: maxwell-poc
 
 x-app: &app
-  image: maxwell-poc-swift:phase2
-  environment:
+  image: maxwell-poc-swift:phase3
+  environment: &app-environment
     SOURCE_HOST: mysql84
     TARGET_HOST: mysql57
     PUBSUB_HOST: pubsub
@@ -26,7 +26,8 @@ services:
       timeout: 3s
       retries: 60
   mysql57:
-    image: mysql:5.7.42-debian
+    image: maxwell-poc-mysql:5.7.42-setpriv
+    build: ./docker/mysql57
     platform: linux/amd64
     command: ["--innodb-use-native-aio=0", "--explicit-defaults-for-timestamp=ON"]
     environment:
@@ -85,6 +86,15 @@ services:
     <<: *app
     profiles: ["test"]
     command: ["probe"]
+    environment:
+      <<: *app-environment
+      SCENARIO: ${SCENARIO:-smoke}
+      ROWS: ${ROWS:-12}
+      SEED: ${SEED:-42}
+      WRITE_INTERVAL_MS: ${WRITE_INTERVAL_MS:-10}
+      CONVERGENCE_TIMEOUT: ${CONVERGENCE_TIMEOUT:-60}
+      DRAIN_SECONDS: ${DRAIN_SECONDS:-2}
+      HARNESS_FAULT: ${HARNESS_FAULT:-none}
     volumes:
       - ${ARTIFACT_PATH:-./artifacts}:/artifacts
 

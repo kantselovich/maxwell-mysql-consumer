@@ -26,6 +26,7 @@ let package = Package(
         .target(name: "E2EHarness", dependencies: ["ReplicationCore", "MySQLTarget", "PubSubTransport"]),
         .executableTarget(name: "Consumer", dependencies: ["E2EHarness", "ReplicationCore", "MySQLTarget", "PubSubTransport"]),
         .testTarget(name: "ReplicationCoreTests", dependencies: ["ReplicationCore"]),
+        .testTarget(name: "E2EHarnessTests", dependencies: ["E2EHarness", "ReplicationCore"]),
     ],
     swiftLanguageModes: [.v5]
 )

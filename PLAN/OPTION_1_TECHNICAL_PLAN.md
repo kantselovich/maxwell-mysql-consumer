@@ -62,6 +62,8 @@ Completed locally on 2026-09-25. See [Phase 2 results](PHASE_2_RESULTS.md) for e
 
 ## Phase 3 — Build the reusable E2E harness
 
+Completed locally on 2026-09-25. See [Phase 3 results](PHASE_3_RESULTS.md). `make e2e` runs the smoke scenarios; `make e2e-checks` additionally proves missing-event and wrong-value assertions fail correctly.
+
 - Provide a host script that builds/starts Compose, waits for actual CDC readiness, runs the containerized Swift harness, collects diagnostics, and returns a nonzero exit code on any failed assertion. Let the host script inject container failures without mounting the Docker socket into the application.
 - Use an isolated Compose project and fresh test volumes per clean run. Allow a keep-on-failure option; retain volumes during restart scenarios. Use seeded workloads and unique run identifiers.
 - Model each scenario as setup → source actions → bounded convergence wait → assertions. Use polling with deadlines rather than fixed sleeps. Allow continuous writes during selected scenarios, then stop writers and emit a final marker through the same ordered stream before final comparison.
@@ -105,15 +107,16 @@ Make workload size, write rate, seed, and convergence timeout configurable. Use 
 
 **Exit gate:** Publish a short results report with tested versions, supported DDL/types, scenario outcomes, measured performance, known limitations, and a go/no-go recommendation for a real GCP trial. No mandatory scenario may be silently skipped.
 
-## Intended developer commands
+## Developer commands
 
-These commands are deliverables to implement, not commands available today:
+The core commands below are implemented through Phase 3. The load suite remains a Phase 5 deliverable:
 
 ```sh
 make up                         # Build/start the local POC and wait for readiness
-make e2e                        # Isolated clean run of all required scenarios
+make e2e                        # Isolated clean run of the current smoke scenarios
 make e2e SCENARIO=schema-change  # Run one scenario
-make e2e-load                    # Larger configurable workload
+make e2e-checks                  # Smoke suite + missing-event/wrong-value assertion checks
+make e2e-load                    # Planned: larger configurable load suite (Phase 5)
 make down                       # Stop without deleting persisted state
 make reset                      # Explicitly remove this POC's volumes/state
 ```

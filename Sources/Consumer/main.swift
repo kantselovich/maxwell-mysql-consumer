@@ -21,6 +21,8 @@ enum Main {
             case "probe": try await PhaseOne.capture(pubsub, settings: settings)
             case "verify-replay": try await PhaseOne.verifyReplay(pubsub, settings: settings)
             case "phase2": try await PhaseTwo.run(pubsub, settings: settings)
+            case "e2e": try await ScenarioHarness.run(pubsub, settings: settings)
+            case "harness-check-negative": try ScenarioHarness.checkNegativeResult(settings: settings)
             case "recovery-tests": try await PhaseTwo.recovery(settings: settings)
             case "health":
                 try await pubsub.checkSubscription("cdc-consumer")
