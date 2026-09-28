@@ -9,3 +9,4 @@ dashboard/.generated
 dashboard/test-results
 dashboard/playwright-report
 dashboard/src/.observablehq
+dashboard/src/generated

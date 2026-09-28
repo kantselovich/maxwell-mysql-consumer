@@ -12,7 +12,7 @@ const test = base.extend<{ browserErrors: void }>({
   }, {auto: true}]
 });
 async function open(page: Page, run?: string, view = "Overview") {
-  await page.goto(run ? `/?run=${run}&view=${view}` : "/");
+  await page.goto(run ? `/evidence?run=${run}&view=${view}` : "/evidence");
   await expect(page.locator('.dashboard[data-ready="true"]')).toBeVisible();
   if (view === "Performance") await expect(page.locator('[data-samples-ready="true"]')).toBeVisible();
 }
@@ -31,7 +31,7 @@ test("selection, accurate counts, baseline pin, and safe evidence drill-down", a
   for (const id of ["expectedEvents", "capturedEvents", "appliedEvents"]) await metric(page, id, "2");
   await metric(page, "dlqDeliveries", "0");
   await page.getByRole("button", {name: "Pin reviewed baseline", exact: true}).click();
-  await page.goto("/");
+  await page.goto("/evidence");
   await expect(page.getByRole("heading", {name: "maxwell-e2e-positive", exact: true})).toBeVisible();
   await page.getByRole("button", {name: "Recovery", exact: true}).click();
   const link = page.getByRole("link", {name: "Evidence maxwell-e2e-positive/source-rows.json", exact: true}).first();

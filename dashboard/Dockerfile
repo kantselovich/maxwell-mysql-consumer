@@ -10,6 +10,7 @@ COPY dashboard/viewer ./viewer
 COPY dashboard/src ./src
 COPY dashboard/observablehq.config.js dashboard/playwright.config.ts ./
 COPY scripts /workspace/scripts
+COPY Sources/E2EHarness /workspace/Sources/E2EHarness
 RUN npm run typecheck && npm test
 RUN npm run build:viewer
 CMD ["node", "reporting/cli.ts", "/artifacts", "/output/report.json"]

@@ -13,6 +13,7 @@ export interface Scenario {
   id: string; title: string; question: string; action: string; expected: string; evidence: string[];
 }
 export interface Run {
+  presentation?: import("./presentation.ts").Presentation;
   schemaVersion: 1;
   id: string;
   artifactDirectory: string;

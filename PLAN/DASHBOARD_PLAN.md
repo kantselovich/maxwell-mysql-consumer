@@ -30,7 +30,7 @@ Implemented locally on 2026-09-28. See [Phase 1 results](DASHBOARD_PHASE_1_RESUL
 
 ## Phase 2 — Build the narrative dashboard
 
-Implemented locally on 2026-09-28; pending user review. See [Phase 2 results](DASHBOARD_PHASE_2_RESULTS.md). `make dashboard-view` starts the manual-refresh viewer, and `make dashboard-test` runs the data/visual browser gate. Watcher/export remain Phase 3.
+Reviewed and committed as `35c1428` on 2026-09-28. See [Phase 2 results](DASHBOARD_PHASE_2_RESULTS.md). `make dashboard-view` starts the manual-refresh viewer, and `make dashboard-test` runs the data/visual browser gate. Watcher/export remain Phase 3.
 
 Provide these views:
 
@@ -49,6 +49,18 @@ Provide these views:
 - Keep large payloads/logs behind drill-down links. Render evidence as escaped text, restrict links to the artifact root, and avoid exposing container environment dumps in shareable reports.
 
 **Exit gate:** A reader can select an existing run, understand what each scenario proves, inspect a failure and trace a chart or assertion back to its evidence. Playwright checks the displayed values, run switching, missing data and expected-failure presentation, and verifies reviewed visual baselines at desktop and narrow viewport sizes.
+
+## Phase 2.5 — Present the test story
+
+Implemented and approved for a checkpoint on 2026-09-28. See [Phase 2.5 results](DASHBOARD_PRESENTATION_RESULTS.md).
+
+- Add a plain-language introduction with a Mermaid architecture diagram, including the DLQ, and an explanation of the Docker test harness.
+- Present basic replication, recovery, and failure handling/load on separate pages, each with phase-scoped run selection.
+- Show recorded container details, log links, event counts, target tables and DLQ counts in a reusable architecture component. Display recorded zero DLQ deliveries as `0`; distinguish missing evidence.
+- Show memory only for Maxwell and the Swift consumer, and label timing as end-to-end.
+- Explain each test's procedure, verification, results and limitations; retain the detailed evidence browser.
+
+**Exit gate:** Importer and Playwright checks pass, including reviewed desktop/narrow visual baselines and checks against retained real runs. Further styling and wording corrections can follow this checkpoint. Automatic refresh and export remain Phase 3.
 
 ## Phase 3 — Refresh after reruns and publish snapshots
 

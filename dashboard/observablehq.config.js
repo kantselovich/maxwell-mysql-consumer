@@ -1,7 +1,7 @@
 export default {
   root: "src",
   output: ".generated/site",
-  title: "Replication evidence",
+  title: "MySQL Third-Party Replication POC",
   sidebar: false,
   toc: false,
   pager: false,

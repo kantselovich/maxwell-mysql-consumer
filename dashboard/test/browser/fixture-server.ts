@@ -30,6 +30,11 @@ await writeFile(join(workload, "memory-samples.log"), '2026-09-28T09:00:00Z\n{"N
 await writeFile(join(artifacts, "maxwell-e2e-positive", "source-rows.json"), '[{"value":"<script>window.evidenceExecuted=true</script>"}]');
 await writeFile(join(artifacts, "maxwell-e2e-positive", "diffs.json"), '[]');
 await writeFile(join(artifacts, "maxwell-e2e-positive", "container-inspect.json"), '{"Env":["SECRET=not-served"]}');
+await writeFile(join(artifacts, "maxwell-e2e-positive", "observations.json"), JSON.stringify({identities: ["a", "b"], dlq: [], payloads: ['{"type":"insert","database":"poc","table":"records"}', '{"type":"table-create","database":"poc","table":"records"}']}));
+for (const service of ["mysql84", "maxwell", "pubsub", "consumer", "mysql57"]) {
+  await writeFile(join(artifacts, "maxwell-e2e-positive", `${service}-container.json`), JSON.stringify([{Name: `/fixture-${service}-1`, Config: {Image: `fixture/${service}:1`, Env: ["SECRET=never-publish"]}, State: {Status: "running"}, RestartCount: 0}]));
+}
+await writeFile(join(artifacts, "maxwell-e2e-positive", "compose.log"), "mysql84-1 | source ready\nconsumer-1 | applied event a\nmaxwell-1 | published event a\npubsub-1 | emulator ready\nmysql57-1 | target ready\n");
 const suiteId = "maxwell-phase5-suite-linked";
 const members = [
   ["scenario-assertions", "maxwell-e2e-positive", "maxwell-e2e-smoke-linked"],
@@ -57,6 +62,6 @@ for (const [gateId, sourceId, runId] of members) {
 }
 const report = join(workspace, "report.json");
 await writeFile(report, JSON.stringify(await importArtifacts(artifacts, "2026-09-28T23:30:00Z")));
-const server = viewer({artifacts, report, site: resolve(".generated/site")});
+const server = viewer({artifacts, report, site: resolve(".generated/site"), repository: resolve("..")});
 server.listen(4174, "127.0.0.1");
 for (const signal of ["SIGTERM", "SIGINT"] as const) process.on(signal, () => server.close(() => { void rm(workspace, {recursive: true, force: true}).then(() => process.exit()); }));

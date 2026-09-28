@@ -5,5 +5,7 @@ ENV OBSERVABLE_TELEMETRY_DISABLE=true
 COPY dashboard/package.json dashboard/package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY dashboard ./
+COPY scripts /workspace/scripts
+COPY Sources/E2EHarness /workspace/Sources/E2EHarness
 RUN npm run build:viewer
 CMD ["npm", "run", "test:browser"]

@@ -10,16 +10,19 @@
     "data": "node reporting/cli.ts",
     "test": "node --test test/*.test.ts test/*.test.js",
     "typecheck": "tsc --noEmit",
-    "build:viewer": "observable build",
+    "build:viewer": "node viewer/build.ts",
     "viewer": "node viewer/server.ts",
     "test:browser": "playwright test",
     "test:browser:update": "playwright test --update-snapshots"
   },
-  "overrides": { "esbuild": "0.28.2" },
+  "overrides": {
+    "esbuild": "0.28.2"
+  },
   "devDependencies": {
     "@observablehq/framework": "1.13.4",
     "@playwright/test": "1.63.0",
     "@types/node": "24.10.1",
+    "mermaid": "11.17.2",
     "typescript": "5.9.3"
   }
 }

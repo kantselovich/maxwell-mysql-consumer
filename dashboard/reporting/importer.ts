@@ -2,6 +2,7 @@ import { readdir, realpath } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import { resolve } from "node:path";
 import { catalog } from "./catalog.ts";
+import { presentation } from "./presentation.ts";
 import { Evidence, array, count, exactPayload, number, object, safeID, string, strings } from "./evidence.ts";
 import type { JSONValue, ObjectValue } from "./evidence.ts";
 import { fact } from "./model.ts";
@@ -266,7 +267,7 @@ async function importRun(root: string, directory: string): Promise<Run> {
   // browser payload. Container inspections/environment dumps are never linked.
   for (const entry of await readdir(resolve(root, directory), { withFileTypes: true })) {
     if (/^(?:[A-Za-z0-9_-]+-)?(?:schema|rows|diffs|inventory)\.json$/.test(entry.name) ||
-        ["checkpoints.json", "ddl-journal.json", "expected-tables.json", "latency-samples-seconds.json", "memory-samples.log", "binlog-rotation.tsv", "startup.log", "harness.log", "probe.log", "recovery.log", "queue-loss.log", "target-outage.log"].includes(entry.name)) await e.link(entry.name);
+        ["checkpoints.json", "ddl-journal.json", "expected-tables.json", "latency-samples-seconds.json", "memory-samples.log", "binlog-rotation.tsv", "startup.log", "harness.log", "probe.log", "recovery.log", "queue-loss.log", "target-outage.log", "compose.log"].includes(entry.name)) await e.link(entry.name);
   }
   const objectFiles = ["run-metadata.json", "host-result.json", "result.json", "suite-result.json", "configuration.json", "versions.json", "capture.json", "assertions.json", "recovery-assertions.json", "run-result.json", "observations.json", "recovery-state.json", "load-state.json", "load-metrics.json"];
   const arrayFiles = ["images.json", "replay.json", "expected-events.json", "audit.json", "ledger.json", "manifest.json", "recovery-ledger.json", "load-ledger.json", "recovery-quarantine.json"];
@@ -284,6 +285,7 @@ async function importRun(root: string, directory: string): Promise<Run> {
   else if (exitCode === null || run.assertions.some(a => a.status === "incomplete")) run.verdict = "incomplete";
   else run.verdict = "passed";
   run.evidence = e.refs;
+  run.presentation = await presentation(e);
   run.verdictEvidence = [...new Map(run.assertions.flatMap(a => a.evidence).map(ref => [ref.path + ref.pointer, ref])).values()];
   if (metadata.state === "started" && terminal === undefined) run.limitations.push("Start metadata alone cannot prove the process is still running; shown as incomplete until a terminal result exists.");
   return run;
