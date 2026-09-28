@@ -14,6 +14,8 @@ if [[ ! "$host_timeout" =~ ^[1-9][0-9]*$ ]] || [ "$host_timeout" -gt 7200 ]; the
   exit 2
 fi
 mkdir -p "$ARTIFACT_PATH"
+source scripts/reporting-metadata.sh
+reporting_begin 3
 cleanup() {
   result=$?
   trap - EXIT
@@ -44,6 +46,7 @@ cleanup() {
     docker compose down --volumes --remove-orphans || result=1
   fi
   printf '{"phase":3,"exitCode":%s,"harnessExitCode":%s,"project":"%s"}\n' "$result" "$harness_exit" "$COMPOSE_PROJECT_NAME" > "$ARTIFACT_PATH/host-result.json"
+  reporting_finish
   printf 'E2E exit=%s; evidence: %s\n' "$result" "$ARTIFACT_PATH"
   exit "$result"
 }

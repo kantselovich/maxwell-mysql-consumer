@@ -14,6 +14,8 @@ Phase 4 is validated: [crash/outage recovery, quarantine and repair results](PLA
 
 Phase 5 is validated: [complete scenario matrix, measured load results and assessment](PLAN/PHASE_5_RESULTS.md).
 
+The dashboard reporting foundation is available: `make dashboard-data` imports retained artifacts into `dashboard/.generated/report.json`, and `make dashboard-data-test` runs its fixture tests. See the [reporting documentation](dashboard/README.md) and [dashboard plan](PLAN/DASHBOARD_PLAN.md). The web UI and Playwright browser tests are not implemented yet.
+
 ## Run
 
 Prerequisite: Docker with Compose v2 and enough resources to build Swift and run two databases plus Java services. A host Swift installation and GCP credentials are not required. First startup downloads images and builds dependencies; subsequent builds use Docker caching.
@@ -142,7 +144,7 @@ The pinned Maxwell build includes a tested adapter for standalone index DDL, whi
 - Stops Maxwell, runs a read-only replay from the saved binlog position with the same configuration, and verifies the seven source identities survive republication.
 - Checks the DLQ observer and verifies the target has no application tables yet. Restores normal Maxwell and preserves diagnostic artifacts, including on failure.
 
-Evidence is written under ignored `artifacts/`: `capture.json`, `replay.json`, container logs, and image inventory. Run fixtures use unique table/subscription names, so tests can be repeated without resetting databases. Phase 1 leaves source probe tables and the main/audit subscription backlog available for inspection.
+New Phase 1 evidence is written under ignored `artifacts/maxwell-phase1-*/`: `capture.json`, `replay.json`, container logs, image inventory and run metadata. Older shared-root artifacts are preserved. Run fixtures use unique table/subscription names, so tests can be repeated without resetting databases. Phase 1 leaves source probe tables and the main/audit subscription backlog available for inspection.
 
 The Phase 1 runner sets `CONSUMER_MODE=observe`, using only `cdc-diagnostic`. Run it on a Phase 1/empty-target project, not a populated Phase 2 target. Normal Compose startup defaults to `apply` on `cdc-consumer`. The Phase 1 diagnostic mode does not route errors to the DLQ, so its empty-DLQ assertion is only a baseline check.
 

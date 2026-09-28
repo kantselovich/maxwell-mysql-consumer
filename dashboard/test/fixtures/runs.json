@@ -1,0 +1,107 @@
+[
+  {
+    "directory": "maxwell-phase1-fixture", "expected": { "verdict": "passed", "phase": 1, "expectedOutcome": "capture-only", "capturedEvents": 1, "appliedEvents": null },
+    "files": {
+      "result.json": { "phase": 1, "exitCode": 0 },
+      "capture.json": { "sourceVersion": "8.4.8", "targetVersion": "5.7.42", "identities": ["source/binlog.1:10/ddl"], "payloads": ["{\"type\":\"table-create\",\"position\":\"binlog.1:10\",\"n\":18446744073709551615}"] },
+      "replay.json": ["{\"n\":18446744073709551615,\"position\":\"binlog.1:10\",\"type\":\"table-create\"}"]
+    }
+  },
+  {
+    "directory": "maxwell-phase2-fixture", "expected": { "verdict": "passed", "phase": 2, "expectedEvents": 1, "capturedEvents": 1, "appliedEvents": 1, "dlqDeliveries": 0 },
+    "files": {
+      "result.json": { "phase": 2, "exitCode": 0 },
+      "expected-events.json": ["database-create:"], "audit.json": ["{\"type\":\"database-create\"}"],
+      "ledger.json": [{ "event_id": "fixture/10/ddl" }],
+      "assertions.json": { "uniqueEvents": 1, "dlqDeliveries": 0 },
+      "recovery-assertions.json": { "ddlRecovery": true, "dmlRollback": true, "deduplication": true, "collisionRejected": true, "driftRejected": true, "pendingDDLBlocks": true }
+    }
+  },
+  {
+    "directory": "maxwell-e2e-positive", "expected": { "verdict": "passed", "phase": 3, "expectedOutcome": "replication-success", "expectedEvents": 2, "capturedEvents": 2, "appliedEvents": 2, "dlqDeliveries": 0 },
+    "files": {
+      "host-result.json": { "phase": 3, "exitCode": 0, "harnessExitCode": 0 },
+      "configuration.json": { "scenario": "append", "fault": "none", "rows": 2, "seed": 42 },
+      "run-result.json": { "passed": true, "scenarios": [{ "name": "append", "passed": true, "failures": [] }] },
+      "manifest.json": [{ "type": "insert" }, { "type": "insert" }],
+      "observations.json": { "identities": ["a", "b"], "dlq": [] },
+      "ledger.json": [{ "event_id": "a" }, { "event_id": "b" }]
+    }
+  },
+  {
+    "directory": "maxwell-e2e-negative", "expected": { "verdict": "passed", "phase": 3, "expectedOutcome": "expected-failure", "expectedEvents": 2, "capturedEvents": 0, "appliedEvents": 0, "dlqDeliveries": 0 },
+    "files": {
+      "host-result.json": { "phase": 3, "exitCode": 0, "harnessExitCode": 1 },
+      "configuration.json": { "scenario": "crud", "fault": "missing-event", "rows": 2, "seed": 42 },
+      "run-result.json": { "passed": false, "failure": { "code": "event-manifest" }, "scenarios": [{ "name": "crud", "passed": false, "failures": [{ "code": "event-manifest" }] }] },
+      "manifest.json": [{ "type": "insert" }, { "type": "delete" }],
+      "observations.json": { "identities": [], "dlq": [] }, "ledger.json": []
+    }
+  },
+  {
+    "directory": "maxwell-e2e-startup", "expected": { "verdict": "failed", "phase": 3, "failureKind": "startup", "appliedEvents": null },
+    "files": { "host-result.json": { "phase": 3, "exitCode": 1, "harnessExitCode": -1 } }
+  },
+  {
+    "directory": "maxwell-e2e-unexpected", "expected": { "verdict": "failed", "phase": 3, "failureKind": "assertion" },
+    "files": {
+      "host-result.json": { "phase": 3, "exitCode": 1, "harnessExitCode": 1 },
+      "configuration.json": { "scenario": "crud", "fault": "none" },
+      "run-result.json": { "passed": false, "failure": { "code": "row-mismatch" }, "scenarios": [{ "name": "crud", "passed": false, "failures": [{ "code": "row-mismatch" }] }] }
+    }
+  },
+  {
+    "directory": "maxwell-e2e-incomplete", "expected": { "verdict": "incomplete", "phase": 3, "startedAt": "2026-09-28T12:00:00Z", "finishedAt": null },
+    "files": {
+      "run-metadata.json": { "schemaVersion": 1, "runId": "maxwell-e2e-incomplete", "phase": 3, "kind": "run", "state": "started", "startedAt": "2026-09-28T12:00:00Z", "finishedAt": null, "parentSuiteId": null, "gateId": null, "code": { "commit": "1111111111111111111111111111111111111111", "dirty": false } }
+    }
+  },
+  {
+    "directory": "maxwell-e2e-corrupt", "expected": { "verdict": "unknown", "phase": 3 },
+    "files": { "host-result.json": { "phase": 3, "exitCode": 0, "harnessExitCode": 0 } },
+    "rawFiles": { "run-result.json": "{broken JSON", "harness.log": "PASS every check!" }
+  },
+  {
+    "directory": "maxwell-phase4-fixture", "expected": { "verdict": "passed", "phase": 4, "expectedOutcome": "recovery", "expectedEvents": 2, "capturedEvents": 2, "appliedEvents": 2, "dlqDeliveries": 3, "uniqueQuarantines": 2, "expectedQuarantines": 2 },
+    "files": {
+      "host-result.json": { "phase": 4, "exitCode": 0, "completedProbes": 47 },
+      "recovery-state.json": {
+        "expected": [{ "type": "update" }, { "type": "update" }], "identities": ["a", "b"], "expectedFailures": 2,
+        "checks": ["assert-before-commit", "assert-after-commit", "assert-ddl", "write-outage", "write-capture-restart", "write-source-restart", "replay", "assert-quarantine-durable", "assert-duplicate-dlq", "fix-target", "fix-target", "assert-resources-lost"],
+        "dlq": [{ "failureID": "q1", "reason": "missing row" }, { "failureID": "q2", "reason": "missing row" }, { "failureID": "q2", "reason": "missing row" }]
+      },
+      "recovery-ledger.json": [{ "event_id": "a" }, { "event_id": "b" }],
+      "recovery-quarantine.json": [{ "published": "1", "resolved": "1" }, { "published": "1", "resolved": "1" }]
+    }
+  },
+  {
+    "directory": "maxwell-phase5-workload-fixture", "expected": { "verdict": "passed", "phase": 5, "expectedEvents": 2, "capturedEvents": 2, "appliedEvents": 2, "dlqDeliveries": 0, "latencyP95Seconds": 1.5 },
+    "files": {
+      "host-result.json": { "phase": 5, "exitCode": 0, "mode": "workload", "completedProbes": 5 },
+      "configuration.json": { "rows": 2, "seed": 42, "writeIntervalMS": 10 },
+      "load-state.json": { "expected": [{ "type": "insert" }, { "type": "insert" }], "identities": ["a", "b"], "checks": ["setup", "backlog", "mark-recovery", "stream", "verify"], "dlq": [] },
+      "load-ledger.json": [{ "event_id": "a" }, { "event_id": "b" }],
+      "load-metrics.json": { "expectedEvents": 2, "measuredDMLEvents": 2, "backlogEvents": 1, "backlogAtStreamStart": 1, "backlogRecoverySeconds": 2, "backlogEventsPerSecond": 0.5, "streamEventsPerSecond": 1, "latencyP50Seconds": 1, "latencyP95Seconds": 1.5, "latencyP99Seconds": 1.8 }
+    }
+  },
+  {
+    "directory": "maxwell-phase5-malformed-fixture", "expected": { "verdict": "passed", "phase": 5, "expectedOutcome": "expected-failure", "appliedEvents": 1, "capturedEvents": 2, "uniqueQuarantines": 1 },
+    "files": {
+      "host-result.json": { "phase": 5, "exitCode": 0, "mode": "malformed", "completedProbes": 7 },
+      "load-state.json": { "expected": [{ "type": "table-create" }], "identities": ["baseline", "blocked-following"], "poisonKind": "malformed", "poisonPayload": "e2JhZA==", "checks": ["setup", "poison-malformed", "assert-blocked", "assert-blocked", "assert-blocked"], "dlq": [{ "failureID": "q", "reason": "dataCorrupted", "delivery": { "payload": "e2JhZA==" } }] },
+      "load-ledger.json": [{ "event_id": "baseline" }]
+    }
+  },
+  {
+    "directory": "maxwell-phase5-unsupported-fixture", "expected": { "verdict": "passed", "phase": 5, "expectedOutcome": "expected-failure", "uniqueQuarantines": 1 },
+    "files": {
+      "host-result.json": { "phase": 5, "exitCode": 0, "mode": "unsupported", "completedProbes": 7 },
+      "load-state.json": { "expected": [{ "type": "table-create" }], "identities": ["baseline", "poison", "blocked-following"], "poisonKind": "unsupported", "poisonPayload": "ZGRs", "checks": ["setup", "poison-unsupported", "assert-blocked", "assert-blocked", "assert-blocked"], "dlq": [{ "failureID": "q", "eventID": "poison", "reason": "Expected DROP in supported DDL subset", "delivery": { "payload": "ZGRs" } }] },
+      "load-ledger.json": [{ "event_id": "baseline" }]
+    }
+  },
+  {
+    "directory": "maxwell-phase5-suite-legacy", "expected": { "verdict": "passed", "phase": 5, "expectedOutcome": "suite", "expectedEvents": null, "appliedEvents": null },
+    "files": { "suite-result.json": { "phase": 5, "exitCode": 0, "completedGates": 6, "requiredGates": 6 } }
+  }
+]

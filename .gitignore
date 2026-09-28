@@ -4,3 +4,7 @@
 artifacts/
 .env
 .upstream/
+dashboard/node_modules/
+dashboard/.generated/
+dashboard/test-results/
+dashboard/playwright-report/

@@ -1,4 +1,4 @@
-.PHONY: up down reset phase1 phase2 phase4 phase5 e2e e2e-load e2e-checks mysql57-checks test logs
+.PHONY: up down reset phase1 phase2 phase4 phase5 e2e e2e-load e2e-checks mysql57-checks test logs dashboard-data dashboard-data-test
 up:
 	docker compose up --build -d --wait --wait-timeout 240
 down:
@@ -25,3 +25,8 @@ test:
 	docker build --target build -t maxwell-poc-swift:tests .
 logs:
 	docker compose logs --tail=100
+dashboard-data:
+	mkdir -p dashboard/.generated
+	docker compose -f compose.dashboard.yaml run --build --rm --no-deps reporting
+dashboard-data-test:
+	docker compose -f compose.dashboard.yaml run --build --rm --no-deps reporting npm test

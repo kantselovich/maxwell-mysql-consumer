@@ -1,0 +1,12 @@
+# Standalone tooling: never starts the replication stack or mounts a Docker socket.
+name: maxwell-poc-dashboard
+services:
+  reporting:
+    image: maxwell-poc-dashboard:phase1
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    network_mode: none
+    volumes:
+      - ./artifacts:/artifacts:ro
+      - ./dashboard/.generated:/output

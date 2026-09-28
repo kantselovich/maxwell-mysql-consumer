@@ -1,0 +1,13 @@
+{
+  "name": "maxwell-poc-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=24.13.0" },
+  "scripts": {
+    "data": "node reporting/cli.ts",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": { "@types/node": "24.10.1", "typescript": "5.9.3" }
+}

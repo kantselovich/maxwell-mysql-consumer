@@ -7,6 +7,8 @@ export SOURCE_ID="$COMPOSE_PROJECT_NAME" CONSUMER_MODE=apply
 export SOURCE_PORT=0 TARGET_PORT=0 PUBSUB_PORT=0
 export ARTIFACT_PATH="$PWD/artifacts/$COMPOSE_PROJECT_NAME"
 mkdir -p "$ARTIFACT_PATH/control"
+source scripts/reporting-metadata.sh
+reporting_begin 4
 probe_container="$COMPOSE_PROJECT_NAME-probe"
 probe_number=0
 cleanup() {
@@ -31,6 +33,7 @@ cleanup() {
     docker compose down --volumes --remove-orphans || result=1
   fi
   printf '{"phase":4,"exitCode":%s,"project":"%s","completedProbes":%s}\n' "$result" "$COMPOSE_PROJECT_NAME" "$probe_number" > "$ARTIFACT_PATH/host-result.json"
+  reporting_finish
   printf 'Phase 4 exit=%s; evidence: %s\n' "$result" "$ARTIFACT_PATH"
   exit "$result"
 }

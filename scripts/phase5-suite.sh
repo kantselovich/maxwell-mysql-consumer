@@ -3,15 +3,23 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 suite_path="$PWD/artifacts/maxwell-phase5-suite-$(date +%s)-$$"
 mkdir -p "$suite_path"
+export ARTIFACT_PATH="$suite_path"
+source scripts/reporting-metadata.sh
+reporting_begin 5 suite
+# Create an explicit manifest even if startup fails before the first child.
+printf '' > "$suite_path/suite-members.jsonl" || printf 'Warning: unable to initialize reporting membership\n' >&2
+export REPORT_SUITE_ID="${suite_path##*/}"
 completed=0
 cleanup() {
   result=$?
   printf '{"phase":5,"exitCode":%s,"completedGates":%s,"requiredGates":6}\n' "$result" "$completed" > "$suite_path/suite-result.json"
+  reporting_finish
   printf 'Phase 5 suite exit=%s; evidence: %s\n' "$result" "$suite_path"
 }
 trap cleanup EXIT
 run_gate() {
   name="$1"; shift
+  export REPORT_GATE_ID="$name"
   "$@" 2>&1 | tee "$suite_path/$name.log"
   completed=$((completed + 1))
 }

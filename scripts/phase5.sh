@@ -14,6 +14,8 @@ export SOURCE_PORT=0 TARGET_PORT=0 PUBSUB_PORT=0
 export ARTIFACT_PATH="$PWD/artifacts/$COMPOSE_PROJECT_NAME"
 export SCENARIO=smoke HARNESS_FAULT=none
 mkdir -p "$ARTIFACT_PATH"
+source scripts/reporting-metadata.sh
+reporting_begin 5
 probe_container="$COMPOSE_PROJECT_NAME-probe"
 probe_number=0
 stats_pid=""
@@ -41,6 +43,7 @@ cleanup() {
     docker compose down --volumes --remove-orphans || result=1
   fi
   printf '{"phase":5,"mode":"%s","exitCode":%s,"project":"%s","completedProbes":%s}\n' "$mode" "$result" "$COMPOSE_PROJECT_NAME" "$probe_number" > "$ARTIFACT_PATH/host-result.json"
+  reporting_finish
   printf 'Phase 5 exit=%s; evidence: %s\n' "$result" "$ARTIFACT_PATH"
   exit "$result"
 }
