@@ -1,6 +1,6 @@
-# Dashboard reporting data — Phase 1
+# POC evidence dashboard
 
-This directory currently contains the artifact importer and test fixtures, not a web UI. Observable pages, the watcher and Playwright browser tests are subsequent phases in [the dashboard plan](../PLAN/DASHBOARD_PLAN.md).
+Phases 1–2 provide an artifact importer, read-only Observable Framework viewer, and Playwright data/visual checks. Automatic watching and shareable static export remain Phase 3 in [the dashboard plan](../PLAN/DASHBOARD_PLAN.md).
 
 ## Run
 
@@ -9,9 +9,26 @@ From the repository root, with Docker/Compose:
 ```sh
 make dashboard-data       # Type-check/test the reporting image, then import artifacts
 make dashboard-data-test  # Run the importer/host-metadata fixture suite in its container
+make dashboard-view       # Import current artifacts and start http://localhost:4173
+make dashboard-stop       # Stop only the dashboard viewer
+make dashboard-test       # Isolated Chromium fixture/data/visual gate
 ```
 
-Output: `dashboard/.generated/report.json`, ignored by Git. The standalone Compose file starts no replication services, mounts `artifacts/` read-only and disables runtime networking. Node is pinned to 24.13.0 and an image digest; npm development dependencies are locked. It does not mount a Docker socket or inspect live databases.
+Output: `dashboard/.generated/report.json`, ignored by Git. The standalone Compose file starts no replication services, mounts `artifacts/` read-only, and disables runtime networking for reporting and fixture browser tests. The viewer publishes only `127.0.0.1:4173`. Node is pinned to 24.13.0 and an image digest; npm development dependencies are locked. It does not mount a Docker socket or inspect live databases. The build needs package-registry access; the built viewer needs no external browser requests or fonts. A patched esbuild override avoids the upstream build dependency's Windows development-server advisory.
+
+After rerunning any POC phase, run `make dashboard-data` and reload the page. `make dashboard-view` is the manual-refresh Phase 2 command; the planned `make dashboard` watcher and `make dashboard-build` export are not implemented yet.
+
+## Views and interpretation
+
+- **Overview:** architecture, selected-run counts, scenario coverage, recorded versions/platform and limitations.
+- **Scenario:** question, action, expected/observed outcome, raw assertion results and evidence.
+- **Recovery:** event/DLQ/quarantine accounting, schema/row/diff drill-downs, and recorded restart/repair order. No invented timestamps.
+- **Performance:** metric definitions/units, processing rates, a histogram of recorded latency samples, sampled memory peaks and timestamped samples. Raw missing/invalid samples remain unavailable. Numeric summaries accompany every chart.
+- **History:** attempts, configuration/code provenance, explicit suite members and side-by-side measurements. Differing or missing workload/version/platform metadata produces warnings; unrecorded host conditions prevent claiming controlled comparability.
+
+Selection is carried in `?run=...&view=...`. With no explicit selection or pinned baseline, the latest **recorded start time** wins, including failed/incomplete runs. Undated legacy attempts follow by ID and cannot honestly be placed chronologically; the UI says so. A browser-local reviewed-baseline pin is a viewing preference, not a changed test verdict. Nothing aggregates suite and child event counts.
+
+Evidence links open inert plain text in a separate tab; their labels include JSON pointers, but the full original file is retained (no lossy reserialization of row values). The server requires a path referenced by the current report and rechecks every path component against the artifact root, rejecting traversal and symlinks. File reads are limited to 64 MiB. Container environment dumps are not allowlisted. Raw logs/payloads can still contain test data: local access is not permission to publish them. This server is for localhost, not authenticated multi-user hosting.
 
 For development with Node >=24.13:
 
@@ -21,6 +38,8 @@ npm ci
 npm run typecheck
 npm test
 npm run data -- ../artifacts .generated/report.json
+npm run build:viewer
+npm run viewer
 ```
 
 Node executes [erasable TypeScript directly](https://nodejs.org/api/typescript.html); `tsc --noEmit` separately checks types. The importer publishes output by atomic rename and rejects output paths inside the raw artifact root, including directory symlinks into it. Importing failed tests is a successful reporting operation: CLI exit 0 means the report was generated, not that every replication test passed.
@@ -70,10 +89,23 @@ The host scripts now write `run-metadata.json` with UTC start/finish times, iden
 
 Future Phase 1 runs use `artifacts/maxwell-phase1-*/` instead of overwriting shared root files; this changes evidence storage only, not the existing Phase 1 persistent-stack behavior. Historical root evidence imports as `legacy-phase1`. Older start/end times, code revisions, lost overwritten attempts and suite links are not invented from filesystem timestamps or nearby directory names.
 
-Discovery covers the legacy root and `maxwell-phase1-*` through `maxwell-phase5-*` / `maxwell-e2e-*` directories. Symlinked runs/files and unsafe paths are rejected. Required JSON reads are bounded to 64 MiB per file. Future UI code must escape raw text and resolve evidence links through the same artifact-root boundary; these references are not permission to publish all logs.
+Discovery covers the legacy root and `maxwell-phase1-*` through `maxwell-phase5-*` / `maxwell-e2e-*` directories. Symlinked runs/files and unsafe paths are rejected. Required JSON reads are bounded to 64 MiB per file. UI strings use text nodes; the server enforces the evidence boundary described above.
 
 ## Tests and fixtures
 
-`test/fixtures/runs.json` contains deliberately small synthetic artifact sets and independent expected values for each adapter and outcome. These are reporting fixtures, not claims that a one-event workload passed the actual full replication gate. They are intended for reuse in later Playwright tests.
+`test/fixtures/runs.json` contains deliberately small synthetic artifact sets and independent expected values for each adapter and outcome. These are reporting fixtures, not claims that a one-event workload passed the actual full replication gate. Playwright materializes these raw files into an isolated temporary directory and runs the real importer. It adds fixed metadata, consistent nearest-rank latency samples, timestamped memory, escaped HTML-looking evidence and an eight-member suite. No mocked report/API or real artifact mutations.
 
 Tests cover correct and incorrect expected failures, corrupt/missing evidence, repeated diagnostics, unresolved quarantine, mismatched ledger IDs, invalid measurements, UInt64 seeds, symlink/path boundaries, suite completeness, CLI output and metadata failures. The Phase 1 runner storage test uses a fake Docker executable in a temporary workspace; it is explicitly not a database integration test. Real replication regression evidence is recorded separately in the dashboard Phase 1 results document.
+
+### Browser and screenshot review
+
+`make dashboard-test` runs Chromium in the Playwright 1.63.0 Noble image pinned by digest, at Linux ARM64 (emulated on Intel), with bundled fonts, UTC/en-US, fixed fixture dates, reduced motion and 1440×1000 / 390×844 viewports. Unexpected console/page/network errors fail the gate. Numerical assertions are independent of screenshot comparisons. Browser tests do not replace replication E2E tests.
+
+Eight baseline images live under `test/browser/snapshots/`. Review them before committing a visual change. Updating is always explicit:
+
+```sh
+make dashboard-test-update-snapshots
+make dashboard-test
+```
+
+Open `dashboard/playwright-report/index.html` for the test report. Failure screenshots, traces and diffs are retained under `dashboard/test-results/`; both directories are ignored. The initial baselines were visually inspected during implementation and are supplied for user review. They must not be automatically regenerated to silence a failing visual test.

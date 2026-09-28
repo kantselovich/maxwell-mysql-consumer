@@ -5,5 +5,5 @@
     "erasableSyntaxOnly": true, "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["reporting/**/*.ts", "test/**/*.ts"]
+  "include": ["reporting/**/*.ts", "viewer/**/*.ts", "test/**/*.ts", "playwright.config.ts"]
 }

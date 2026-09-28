@@ -2,7 +2,7 @@
 name: maxwell-poc-dashboard
 services:
   reporting:
-    image: maxwell-poc-dashboard:phase1
+    image: maxwell-poc-dashboard:phase2
     build:
       context: .
       dockerfile: dashboard/Dockerfile
@@ -10,3 +10,29 @@ services:
     volumes:
       - ./artifacts:/artifacts:ro
       - ./dashboard/.generated:/output
+  viewer:
+    image: maxwell-poc-dashboard:phase2
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    command: ["npm", "run", "viewer"]
+    environment:
+      BIND_HOST: 0.0.0.0
+      ARTIFACT_ROOT: /artifacts
+      REPORT_PATH: /reports/report.json
+    ports:
+      - "127.0.0.1:4173:4173"
+    volumes:
+      - ./artifacts:/artifacts:ro
+      - ./dashboard/.generated:/reports:ro
+  browser-tests:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile.playwright
+    platform: linux/arm64
+    shm_size: 1gb
+    network_mode: none
+    volumes:
+      - ./dashboard/test/browser:/workspace/dashboard/test/browser
+      - ./dashboard/test-results:/workspace/dashboard/test-results
+      - ./dashboard/playwright-report:/workspace/dashboard/playwright-report

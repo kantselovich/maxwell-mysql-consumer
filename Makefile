@@ -30,3 +30,15 @@ dashboard-data:
 	docker compose -f compose.dashboard.yaml run --build --rm --no-deps reporting
 dashboard-data-test:
 	docker compose -f compose.dashboard.yaml run --build --rm --no-deps reporting npm test
+
+.PHONY: dashboard-view dashboard-stop dashboard-test dashboard-test-update-snapshots
+dashboard-view: dashboard-data
+	docker compose -f compose.dashboard.yaml up --build -d viewer
+dashboard-stop:
+	docker compose -f compose.dashboard.yaml stop viewer
+dashboard-test:
+	mkdir -p dashboard/test-results dashboard/playwright-report
+	docker compose -f compose.dashboard.yaml run --build --rm --no-deps browser-tests
+dashboard-test-update-snapshots:
+	mkdir -p dashboard/test-results dashboard/playwright-report
+	docker compose -f compose.dashboard.yaml run --build --rm --no-deps browser-tests npm run test:browser:update

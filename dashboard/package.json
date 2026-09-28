@@ -3,11 +3,23 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engines": { "node": ">=24.13.0" },
+  "engines": {
+    "node": ">=24.13.0"
+  },
   "scripts": {
     "data": "node reporting/cli.ts",
-    "test": "node --test test/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "test": "node --test test/*.test.ts test/*.test.js",
+    "typecheck": "tsc --noEmit",
+    "build:viewer": "observable build",
+    "viewer": "node viewer/server.ts",
+    "test:browser": "playwright test",
+    "test:browser:update": "playwright test --update-snapshots"
   },
-  "devDependencies": { "@types/node": "24.10.1", "typescript": "5.9.3" }
+  "overrides": { "esbuild": "0.28.2" },
+  "devDependencies": {
+    "@observablehq/framework": "1.13.4",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
 }

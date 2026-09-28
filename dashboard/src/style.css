@@ -1,0 +1,77 @@
+@import "observablehq:default.css";
+
+:root { --theme-foreground: #172f35; --theme-background: #f3f6f4; --theme-foreground-muted: #53696f; --theme-foreground-focus: #00796b; }
+body { font: 15px/1.55 Arial, sans-serif; margin: 0; }
+#observablehq-main { max-width: 1200px; margin: 0 auto; padding: 24px 28px 60px; }
+#observablehq-main > h1 { display: none; }
+.dashboard { max-width: 1200px; }
+.dashboard h1, .dashboard h2, .dashboard h3, .dashboard h4 { font-family: Arial, sans-serif; color: #172f35; max-width: none; }
+.dashboard h1 { font-size: clamp(32px, 5vw, 52px); letter-spacing: -1.8px; margin: 4px 0 12px; }
+.dashboard h2 { font-size: 23px; margin: 25px 0 10px; }
+.dashboard h3 { font-size: 18px; }
+.dashboard h4 { margin-bottom: 3px; }
+.dashboard p, .dashboard ol, .dashboard table { max-width: none; }
+.hero { padding: 16px 0 24px; border-bottom: 1px solid #ccd8d4; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #00796b; }
+.architecture { color: #50696c; font-size: 16px; }
+.controls { display: flex; align-items: end; gap: 10px; padding: 22px 0; flex-wrap: wrap; }
+label { display: block; min-width: 0; font-size: 12px; font-weight: 700; }
+.controls label { flex: 1; }
+select, button { box-sizing: border-box; font: inherit; color: #193c40; border: 1px solid #b9ccc7; border-radius: 6px; background: white; padding: 10px 12px; cursor: pointer; }
+select { display: block; width: 100%; margin-top: 5px; text-overflow: ellipsis; }
+button:hover { background: #e2eeea; }
+button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid #188b80; outline-offset: 3px; }
+.status-card { background: #fff; padding: 20px 24px; border: 1px solid #d8e1dd; border-left: 4px solid #638c83; border-radius: 8px; }
+.status-card h2 { overflow-wrap: anywhere; font-size: 20px; margin: 12px 0; }
+.status-line { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.badge { display: inline-block; border-radius: 5px; padding: 3px 9px; font-size: 12px; font-weight: 700; text-transform: uppercase; background: #edf0f2; color: #46555c; white-space: nowrap; }
+.passed { color: #09634b; background: #d9f0e5; }
+.failed { color: #9e3030; background: #fce2dd; }
+.incomplete { color: #815317; background: #fff0cc; }
+.unknown { color: #554b79; background: #ebe6f5; }
+.muted { color: #596d70; font-size: 13px; }
+.notice { border-left: 3px solid #c99a43; padding: 7px 12px; background: #fbf4e6; font-size: 13px; overflow-wrap: anywhere; }
+.tabs { display: flex; gap: 6px; padding: 22px 0 0; border-bottom: 1px solid #c9d8d1; flex-wrap: wrap; }
+.tabs button { border: 0; background: transparent; border-radius: 5px 5px 0 0; padding: 12px 16px; }
+.tabs button[aria-current="page"] { background: #173e40; color: white; }
+.view { padding-top: 5px; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
+.metric { background: white; padding: 18px; border-radius: 8px; border: 1px solid #d8e1dd; min-width: 0; }
+.metric > span { color: #526b6b; font-size: 13px; }
+.metric strong { display: block; font-size: 28px; font-weight: 600; margin: 8px 0; overflow-wrap: anywhere; }
+.refs { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; }
+.refs a { overflow-wrap: anywhere; }
+a { color: #00796b; }
+.table-wrap { overflow-x: auto; max-width: 100%; margin: 12px 0 24px; border: 1px solid #d8e1dd; border-radius: 6px; background: #fff; }
+.dashboard table { width: 100%; margin: 0; font-size: 13px; table-layout: fixed; }
+.dashboard th, .dashboard td { padding: 12px; text-align: left; vertical-align: top; overflow-wrap: anywhere; border-bottom: 1px solid #e1e8e4; }
+.dashboard th { background: #e8efeb; font-size: 12px; }
+td button { max-width: 100%; overflow-wrap: anywhere; text-align: left; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; background: #e9eeeb; font-size: 12px; max-width: 100%; box-sizing: border-box; }
+.story { background: #fff; border: 1px solid #d8e1dd; border-radius: 8px; padding: 12px 22px; margin-bottom: 18px; }
+.story p { margin-top: 4px; }
+.chart { max-width: 740px; margin: 24px 0; }
+.chart svg { display: block; width: 100%; background: #fff; padding: 12px; box-sizing: border-box; border-radius: 6px; }
+.chart rect { fill: #2d8f80; }
+.chart text { fill: #244e50; font: 14px Arial, sans-serif; }
+.sequence { border-left: 2px solid #91b6aa; margin-left: 16px; padding-left: 25px; }
+.sequence li { padding: 7px 0; overflow-wrap: anywhere; }
+details { padding: 14px 0; border-top: 1px solid #ccd8d4; }
+summary { cursor: pointer; font-weight: 600; }
+.evidence { margin-top: 30px; }
+@media (max-width: 600px) {
+  #observablehq-main { padding: 16px 14px 40px; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric { padding: 12px; }
+  .metric strong { font-size: 23px; }
+  .controls label { flex-basis: 100%; }
+  .status-card { padding: 14px; }
+  .tabs { gap: 0; }
+  .tabs button { padding: 10px; font-size: 13px; }
+  .dashboard th, .dashboard td { padding: 8px; font-size: 12px; }
+  .stack-narrow thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .stack-narrow tbody, .stack-narrow tr, .stack-narrow td { display: block; }
+  .stack-narrow tr { padding: 10px; border-bottom: 2px solid #c9d8d1; }
+  .dashboard .stack-narrow td { border: 0; padding: 4px; }
+  .stack-narrow td::before { content: attr(data-label); display: block; font-size: 11px; color: #53696f; font-weight: 700; }
+}

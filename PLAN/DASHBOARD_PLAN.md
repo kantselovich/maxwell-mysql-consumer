@@ -30,6 +30,8 @@ Implemented locally on 2026-09-28. See [Phase 1 results](DASHBOARD_PHASE_1_RESUL
 
 ## Phase 2 — Build the narrative dashboard
 
+Implemented locally on 2026-09-28; pending user review. See [Phase 2 results](DASHBOARD_PHASE_2_RESULTS.md). `make dashboard-view` starts the manual-refresh viewer, and `make dashboard-test` runs the data/visual browser gate. Watcher/export remain Phase 3.
+
 Provide these views:
 
 | View | Content |
@@ -83,6 +85,6 @@ make dashboard-test-live SCENARIO=crud # Fresh POC run + browser verification of
 make dashboard-test-update-snapshots  # Explicit visual baseline update; review the diffs
 ```
 
-`make dashboard-data` is implemented, along with `make dashboard-data-test` for importer/metadata fixtures. The viewer, watcher, export and Playwright commands above remain planned.
+`make dashboard-data`, `make dashboard-data-test`, `make dashboard-test` and the explicit snapshot-update command are implemented. Phase 2 adds `make dashboard-view` / `make dashboard-stop` for the manual-refresh viewer. Watcher, static export, automatic-refresh browser coverage and fresh-run integration remain Phase 3.
 
 Follow-up scope: live progress during individual tests, timestamped fault/recovery event streams, richer backlog time-series sampling, artifact retention/archive policies, and CI-hosted reports. The initial delivery focuses on trustworthy completed-run presentation and automatic refresh after reruns.

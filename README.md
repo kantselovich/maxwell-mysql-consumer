@@ -14,7 +14,7 @@ Phase 4 is validated: [crash/outage recovery, quarantine and repair results](PLA
 
 Phase 5 is validated: [complete scenario matrix, measured load results and assessment](PLAN/PHASE_5_RESULTS.md).
 
-The dashboard reporting foundation is available: `make dashboard-data` imports retained artifacts into `dashboard/.generated/report.json`, and `make dashboard-data-test` runs its fixture tests. See the [reporting documentation](dashboard/README.md) and [dashboard plan](PLAN/DASHBOARD_PLAN.md). The web UI and Playwright browser tests are not implemented yet.
+The read-only results dashboard is available: `make dashboard-view` imports retained artifacts and starts [localhost:4173](http://localhost:4173), without starting the replication stack. After a test rerun, use `make dashboard-data` and reload; automatic watching/export remain Phase 3. `make dashboard-test` runs isolated Playwright data and desktop/narrow visual checks; `make dashboard-stop` stops the viewer. See the [dashboard documentation](dashboard/README.md) and [dashboard plan](PLAN/DASHBOARD_PLAN.md).
 
 ## Run
 
