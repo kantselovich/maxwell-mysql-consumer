@@ -1,7 +1,7 @@
 name: maxwell-poc
 
 x-app: &app
-  image: maxwell-poc-swift:phase3
+  image: maxwell-poc-swift:phase4
   environment: &app-environment
     SOURCE_HOST: mysql84
     TARGET_HOST: mysql57
@@ -59,6 +59,9 @@ services:
   maxwell:
     image: maxwell-poc-maxwell:1.46.0-pubsub
     build: ./docker/maxwell
+    # The pinned Maxwell exits after one failed binlog reconnect. Docker's
+    # restart backoff lets it resume its persisted capture position after an outage.
+    restart: on-failure
     command: ["bin/maxwell", "--config=/etc/maxwell/config.properties"]
     volumes:
       - ./docker/maxwell/config.properties:/etc/maxwell/config.properties:ro

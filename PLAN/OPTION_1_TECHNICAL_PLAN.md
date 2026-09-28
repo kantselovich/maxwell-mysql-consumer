@@ -75,6 +75,8 @@ Completed locally on 2026-09-25. See [Phase 3 results](PHASE_3_RESULTS.md). `mak
 
 ## Phase 4 — Recovery, duplicate handling, and DLQ behavior
 
+Completed locally on 2026-09-28. See [Phase 4 results](PHASE_4_RESULTS.md). `make phase4` exercises real process kills, outage/restart recovery, blocking quarantine, exact-byte repair and visible emulator queue loss.
+
 - Retry transient failures with backoff while retaining the event and preserving order. Extend acknowledgement deadlines as needed. Simulate a crash before commit and after commit but before acknowledgement; recovery must neither lose nor apply an event twice.
 - Separate Maxwell's capture checkpoint from the consumer's applied checkpoint. Persist both, and retain the apply ledger for the full POC replay window. Replaying an older update after a newer update must not overwrite the newer state.
 - Use an application-managed DLQ for this POC. On a permanent error, durably record the failed payload/identity/reason and block the stream, publish the diagnostic to the DLQ, then acknowledge only after quarantine is durable and publication succeeds. Retry interrupted publication with the same event identity; observers deduplicate diagnostics.
@@ -109,13 +111,14 @@ Make workload size, write rate, seed, and convergence timeout configurable. Use 
 
 ## Developer commands
 
-The core commands below are implemented through Phase 3. The load suite remains a Phase 5 deliverable:
+The core commands below are implemented through Phase 4. The load suite remains a Phase 5 deliverable:
 
 ```sh
 make up                         # Build/start the local POC and wait for readiness
 make e2e                        # Isolated clean run of the current smoke scenarios
 make e2e SCENARIO=schema-change  # Run one scenario
 make e2e-checks                  # Smoke suite + missing-event/wrong-value assertion checks
+make phase4                      # Crash/outage/duplicate/quarantine/repair recovery gate
 make e2e-load                    # Planned: larger configurable load suite (Phase 5)
 make down                       # Stop without deleting persisted state
 make reset                      # Explicitly remove this POC's volumes/state

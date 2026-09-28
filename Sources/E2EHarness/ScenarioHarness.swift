@@ -252,6 +252,9 @@ public enum ScenarioHarness {
             }
         }
         if journals.contains(where: { $0["completed"] != "1" }) { failures.append(HarnessFailure("pending-ddl", "Unresolved DDL journal entries")) }
+        let quarantine = try await target.query("SELECT failure_id FROM cdc_meta.quarantine WHERE resolved=FALSE")
+        let head = try await target.query("SELECT singleton FROM cdc_meta.consumer_head")
+        if !quarantine.isEmpty || !head.isEmpty { failures.append(HarnessFailure("unresolved-event", "Pending stream head or unresolved quarantine")) }
         for (name, db) in [("source", source), ("target", target)] {
             let inventory = try await db.query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='poc' ORDER BY TABLE_NAME")
             try artifacts.save(inventory, "\(stage)-\(name)-inventory.json")

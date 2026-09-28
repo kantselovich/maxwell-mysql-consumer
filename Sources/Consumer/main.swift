@@ -3,6 +3,7 @@ import E2EHarness
 import MySQLTarget
 import PubSubTransport
 import ReplicationCore
+import ConsumerRuntime
 
 @main
 enum Main {
@@ -21,6 +22,7 @@ enum Main {
             case "probe": try await PhaseOne.capture(pubsub, settings: settings)
             case "verify-replay": try await PhaseOne.verifyReplay(pubsub, settings: settings)
             case "phase2": try await PhaseTwo.run(pubsub, settings: settings)
+            case "phase4": try await PhaseFour(pubsub: pubsub, settings: settings).run(CommandLine.arguments.dropFirst(2).first ?? "verify")
             case "e2e": try await ScenarioHarness.run(pubsub, settings: settings)
             case "harness-check-negative": try ScenarioHarness.checkNegativeResult(settings: settings)
             case "recovery-tests": try await PhaseTwo.recovery(settings: settings)
@@ -32,30 +34,15 @@ enum Main {
                         try await PhaseOne.connect(db, host: settings.targetHost)
                         let lock = try await db.query("SELECT IS_USED_LOCK('cdc-applier-poc') AS owner")
                         try PhaseOne.require(lock.first?["owner"] != nil, "Applier is not ready")
+                        let blocked = try await db.query("SELECT failure_id FROM cdc_meta.consumer_head WHERE failure_id IS NOT NULL")
+                        try PhaseOne.require(blocked.isEmpty, "Stream blocked by durable quarantine; operator repair required")
                         await db.close()
                     } catch { await db.close(); throw error }
                 }
             case "apply":
-                let db = Database()
-                do {
-                    try await PhaseOne.connect(db, host: settings.targetHost)
-                    let applier = Applier(db: db, source: settings.sourceID)
-                    try await applier.initialize()
-                    print("READY serial target applier source=\(settings.sourceID)")
-                    while !Task.isCancelled {
-                        let batch = try await pubsub.pull("cdc-consumer", max: 1)
-                        for delivery in batch {
-                            try PhaseOne.require(delivery.orderingKey == "mysql84", "Unexpected ordering key")
-                            try await pubsub.deadline("cdc-consumer", ids: [delivery.ackID], seconds: 600)
-                            let applied = try await applier.apply(delivery.data)
-                            // Both mutation and durable metadata are committed at this point.
-                            try await pubsub.ack("cdc-consumer", ids: [delivery.ackID])
-                            print("\(applied ? "APPLIED" : "DEDUPLICATED") \(try MaxwellEvent(data: delivery.data).identity(source: settings.sourceID))")
-                        }
-                        if batch.isEmpty { try await Task.sleep(nanoseconds: 100_000_000) }
-                    }
-                    await db.close()
-                } catch { await db.close(); throw error }
+                try await ConsumerLoop(pubsub: pubsub, targetHost: settings.targetHost, sourceID: settings.sourceID).run()
+            case "repair":
+                try await ConsumerLoop(pubsub: pubsub, targetHost: settings.targetHost, sourceID: settings.sourceID).repair()
             case "observe":
                 print("Phase 1 diagnostic observer: no target writes; cdc-consumer remains untouched")
                 while !Task.isCancelled {

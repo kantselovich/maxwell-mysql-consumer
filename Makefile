@@ -1,4 +1,4 @@
-.PHONY: up down reset phase1 phase2 e2e e2e-checks mysql57-checks test logs
+.PHONY: up down reset phase1 phase2 phase4 e2e e2e-checks mysql57-checks test logs
 up:
 	docker compose up --build -d --wait --wait-timeout 240
 down:
@@ -9,6 +9,8 @@ phase1:
 	bash scripts/phase1.sh
 phase2:
 	bash scripts/phase2.sh
+phase4:
+	bash scripts/phase4.sh
 e2e:
 	bash scripts/e2e.sh
 e2e-checks:

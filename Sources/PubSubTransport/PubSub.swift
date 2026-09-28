@@ -12,6 +12,13 @@ public struct Delivery {
 
 /// Plaintext, credential-free emulator transport only. Not a production GCP client.
 public final class PubSub {
+    public static func isMissingResource(_ error: Error) -> Bool {
+        (error as? GRPCStatusTransformable)?.makeGRPCStatus().code == .notFound
+    }
+    public static func isTransient(_ error: Error) -> Bool {
+        guard let status = (error as? GRPCStatusTransformable)?.makeGRPCStatus() else { return false }
+        return [.unavailable, .deadlineExceeded, .resourceExhausted, .aborted, .internalError].contains(status.code)
+    }
     private let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     private let channel: ClientConnection
     private let project: String

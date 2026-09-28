@@ -24,7 +24,7 @@ public final class Applier {
     /// afterMutation is a test seam for a simulated process failure before ledger
     /// commit. DML rolls back; DDL is intentionally left for journal recovery.
     @discardableResult
-    public func apply(_ payload: Data, afterMutation: (() throws -> Void)? = nil) async throws -> Bool {
+    public func apply(_ payload: Data, afterMutation: (() async throws -> Void)? = nil) async throws -> Bool {
         let event = try MaxwellEvent(data: payload)
         guard event.database == database else { throw POCError("Event database out of scope") }
         let id = try event.identity(source: source)
@@ -45,7 +45,7 @@ public final class Applier {
             try await db.query("START TRANSACTION")
             do {
                 try await dml(event, object: object)
-                try afterMutation?()
+                try await afterMutation?()
                 try await record(id, canonical)
                 try await db.query("COMMIT")
             } catch {
@@ -73,7 +73,7 @@ public final class Applier {
             }
             if current == before {
                 try await db.query(plan.sql)
-                try afterMutation?()
+                try await afterMutation?()
             } else if current != after {
                 throw POCError("DDL recovery found unrelated schema drift: \(id)")
             }

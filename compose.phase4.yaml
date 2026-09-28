@@ -1,0 +1,7 @@
+# Only the isolated Phase 4 host runner enables process-kill pause points.
+services:
+  consumer:
+    environment:
+      ENABLE_FAULT_INJECTION: "1"
+    volumes:
+      - ${ARTIFACT_PATH}/control:/faults

@@ -10,6 +10,8 @@ Phase 2 is validated: [schema/data replication results](PLAN/PHASE_2_RESULTS.md)
 
 Phase 3 is validated: [reusable harness and negative assertion results](PLAN/PHASE_3_RESULTS.md).
 
+Phase 4 is validated: [crash/outage recovery, quarantine and repair results](PLAN/PHASE_4_RESULTS.md).
+
 ## Run
 
 Prerequisite: Docker with Compose v2 and enough resources to build Swift and run two databases plus Java services. A host Swift installation and GCP credentials are not required. First startup downloads images and builds dependencies; subsequent builds use Docker caching.
@@ -19,6 +21,7 @@ make e2e      # Fresh isolated smoke suite: append, CRUD, schema change
 make e2e-checks # Smoke suite plus deliberate missing-event/wrong-value checks
 make mysql57-checks # Three fresh target DB starts, each with a warm restart
 make phase2   # Fresh isolated stack: schema/data convergence and recovery checks
+make phase4   # Fresh isolated stack: real crashes, outages, quarantine and repair
 make up       # Build/start the default persistent stack with the applier
 make phase1   # Run compatibility checks and actual Maxwell binlog replay
 make logs
@@ -55,7 +58,34 @@ The underlying harness exits 1 in both cases. The self-test runner succeeds only
 
 Evidence is under `artifacts/maxwell-e2e-*/`: configuration/seed, workload plans, expected event manifest, raw deliveries (including duplicates and any DLQ records), semantic schema/row comparisons, explicit diffs, ledger/journal/checkpoints, scenario and run JSON results, versions, build/startup/harness/service logs, container/image state and capture checkpoint. Per-service `*-container.json` and `*-processes.txt` preserve health-check history and process state before cleanup, including when startup fails before the harness launches. `host-result.json` distinguishes the host/self-test exit code from the actual harness exit code. Inspect `run-result.json` and `*-diffs.json` first on assertion failure, or `startup.log` and the affected service's diagnostics on startup failure.
 
-The host runner owns container lifecycle and the timeout; no Docker socket is mounted in Swift. Successful runs remove only their own containers/volumes and retain artifacts. `KEEP_ON_FAILURE=1` retains failed infrastructure and its volumes for inspection. Use the printed project name with `docker compose -p NAME logs`; when finished, `docker compose -p NAME down --volumes --remove-orphans` removes that disposable project. Existing Phase 1/2 stacks are not reset. Actual restart/outage injection, retry/DLQ recovery and the broader Phase 5 suite remain subsequent work; `make phase2` still runs the detailed type-boundary and target-journal regression checks.
+The host runner owns container lifecycle and the timeout; no Docker socket is mounted in Swift. Successful runs remove only their own containers/volumes and retain artifacts. `KEEP_ON_FAILURE=1` retains failed infrastructure and its volumes for inspection. Use the printed project name with `docker compose -p NAME logs`; when finished, `docker compose -p NAME down --volumes --remove-orphans` removes that disposable project. Existing Phase 1/2 stacks are not reset. Phase 4 adds real restart/outage and quarantine/repair tests below; the broader Phase 5 load/type scenario matrix remains subsequent work. `make phase2` still runs the detailed type-boundary and target-journal regression checks.
+
+## Recovery and quarantine (Phase 4)
+
+`make phase4` builds a fresh isolated stack, retains volumes across injected restarts, and records evidence under `artifacts/maxwell-phase4-*/`. Each Swift probe has a 120-second host watchdog. `KEEP_ON_FAILURE=1 make phase4` retains a failed project for inspection. Only its test-specific Compose override enables file-controlled pause points; the host sends actual SIGKILL signals without exposing the Docker socket to Swift.
+
+The consumer durably stores a single in-flight envelope in `cdc_meta.consumer_head` before applying it. On reconnect/restart, that head is handled before another pull. Transient target/transport failures retry with exponential backoff (250 ms through 5 seconds), without an attempt limit or automatic broker DLQ forwarding. A separate task renews a 10-second acknowledgement deadline every 3 seconds while a live delivery is retained. A target connection loss causes reconnect and reacquisition of the single-writer lock. Unknown infrastructure errors fail visibly without ACK.
+
+A permanent event error atomically records original bytes, source identity when decodable, Pub/Sub message identity, reason and a diagnostic ID in `cdc_meta.quarantine`, and marks the head blocked. Only after this durable write and successful DLQ publication may the delivery be acknowledged. A publish response/state-update crash can duplicate diagnostics; observers deduplicate by the persisted `failureID` and validate identical contents. The blocked head survives restart, makes the health check fail, and prevents all later application writes. Changing `SOURCE_ID` cannot bypass an existing head. A quarantine is not successful replication.
+
+To repair a blocked stream, stop its consumer, inspect `consumer_head`/`quarantine`, and correct the underlying target or supported-policy issue. Then run the exact-byte replay command using the **same project and SOURCE_ID**:
+
+```sh
+docker compose stop consumer
+# Inspect and correct the failure cause first; do not delete quarantine/ledger rows.
+docker compose run --rm --no-deps e2e repair
+docker compose start consumer
+```
+
+For an isolated retained project, set `COMPOSE_PROJECT_NAME` and `SOURCE_ID` to its printed name and preserve its Compose environment. Repair takes the same writer lock, republishes any outstanding diagnostic, and retries the unchanged stored payload. It marks quarantine resolved and clears the head only after successful application; interrupted repair safely retries through the apply ledger/DDL journal. Failed repair leaves the stream blocked. There is deliberately no skip or replacement-payload option: malformed data or unsupported DDL may require a reviewed code/policy correction, or an explicit clean rebuild, rather than an unsafe automatic translation.
+
+The recovery gate covers DML kills before commit and after commit/before ACK, DDL kill after implicit commit/before journal completion, lease renewal across a pause longer than the lease, target outage with source writes, Maxwell/source restarts, old-update republication, and two deliberate target-drift poison events. It kills between quarantine persistence/publication and between publication/publication bookkeeping, proves blocked progress across restarts, rejects an unfixed repair, restores the missing target row, and replays the original failed event before draining later updates. Every convergence check reconciles an independent operation manifest, audit and full ledger payloads, modeled source/target rows/schema, checkpoint, completed DDL, and resolved quarantine. Positive stages require zero DLQ; negative stages require exactly their expected unique diagnostics.
+
+Maxwell's capture checkpoint remains in the **source** `maxwell.positions`; the consumer's applied checkpoint and full replay ledger remain on the **target**. The ledger is not pruned during the POC. Capture progress alone does not establish successful application.
+
+The pinned Maxwell defaults to one binlog reconnect attempt and can exit during a source restart. Its Compose service uses `restart: on-failure` to resume the persisted capture position with Docker's restart backoff. The consumer itself does not auto-restart on fatal queue-loss/configuration errors; those remain visible and require operator action.
+
+The final gate restarts the emulator, verifies its resources disappeared, and requires a visible consumer failure with no checkpoint/ledger advancement. Queue loss is **not** durable broker recovery. Stop writers and all components; retain artifacts if needed, then explicitly remove only that disposable project's volumes and start a fresh project/source identity, recreating schema/data from the original workload. For the default disposable stack this is `make reset` followed by `make up`; `make e2e` always creates a fresh project. Do not merely recreate subscriptions and resume old checkpoints: missing queued changes cannot be recovered that way. Existing-data snapshot/bootstrap and real Pub/Sub durability remain out of scope.
 
 ## Phase 2 checks and contract
 
@@ -63,7 +93,7 @@ The host runner owns container lifecycle and the timeout; no Docker socket is mo
 
 The Swift harness provisions schemas **only on 8.4** and checks ordered event accounting, normalized schemas, sorted row values, the apply ledger, the final checkpoint, completed DDL journals and an empty DLQ. Its workload covers composite/changed primary keys, repeated updates, deletes, add-column followed immediately by writes, index creation/removal, drop/recreate, unsigned 64-bit integers, DECIMAL(65,30), Unicode, binary, JSON, SQL NULL versus JSON null, and microsecond datetime/timestamps. Republishing an old update must not change newer target state. Separate target integration checks inject errors after mutation to exercise transactional rollback and DDL recovery; these are not process-crash/ACK-boundary tests.
 
-The consumer pulls one event at a time, grants a 600-second acknowledgement lease, and ACKs only after target commit. DML, the event ledger and the checkpoint share an InnoDB transaction. DDL first records durable before/after schema expectations; replay either executes from the before-state or recognizes the after-state, rejecting unrelated drift. A target advisory lock prevents concurrent appliers. Errors exit without ACK; automatic retries, durable quarantine/DLQ publication and repair commands remain Phase 4. The positive empty-DLQ check is meaningful only together with event accounting.
+The consumer pulls one event at a time and ACKs successful replication only after target commit. DML, the event ledger and the checkpoint share an InnoDB transaction. DDL first records durable before/after schema expectations; replay either executes from the before-state or recognizes the after-state, rejecting unrelated drift. A target advisory lock prevents concurrent appliers. Phase 4 extends this with renewable leases, retries and a durable blocking quarantine (described above). The positive empty-DLQ check is meaningful only together with event accounting.
 
 Supported DDL is intentionally narrow:
 
@@ -89,7 +119,7 @@ The pinned Maxwell build includes a tested adapter for standalone index DDL, whi
 
 Evidence is written under ignored `artifacts/`: `capture.json`, `replay.json`, container logs, and image inventory. Run fixtures use unique table/subscription names, so tests can be repeated without resetting databases. Phase 1 leaves source probe tables and the main/audit subscription backlog available for inspection.
 
-The Phase 1 runner sets `CONSUMER_MODE=observe`, using only `cdc-diagnostic`. Run it on a Phase 1/empty-target project, not a populated Phase 2 target. Normal Compose startup defaults to `apply` on `cdc-consumer`. There is no DLQ error routing yet, so the Phase 1 empty-DLQ assertion is only a baseline check.
+The Phase 1 runner sets `CONSUMER_MODE=observe`, using only `cdc-diagnostic`. Run it on a Phase 1/empty-target project, not a populated Phase 2 target. Normal Compose startup defaults to `apply` on `cdc-consumer`. The Phase 1 diagnostic mode does not route errors to the DLQ, so its empty-DLQ assertion is only a baseline check.
 
 ## Implementation notes
 

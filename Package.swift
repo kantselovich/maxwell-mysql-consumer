@@ -17,6 +17,7 @@ let package = Package(
             "ReplicationCore",
             .product(name: "MySQLNIO", package: "mysql-nio"),
             .product(name: "NIOPosix", package: "swift-nio"),
+            .product(name: "NIOCore", package: "swift-nio"),
         ]),
         .target(name: "PubSubTransport", dependencies: [
             .product(name: "GRPC", package: "grpc-swift"),
@@ -24,9 +25,14 @@ let package = Package(
             .product(name: "NIOPosix", package: "swift-nio"),
         ], plugins: [.plugin(name: "SwiftProtobufPlugin", package: "swift-protobuf")]),
         .target(name: "E2EHarness", dependencies: ["ReplicationCore", "MySQLTarget", "PubSubTransport"]),
-        .executableTarget(name: "Consumer", dependencies: ["E2EHarness", "ReplicationCore", "MySQLTarget", "PubSubTransport"]),
+        .target(name: "ConsumerRuntime", dependencies: ["ReplicationCore", "MySQLTarget", "PubSubTransport"]),
+        .executableTarget(name: "Consumer", dependencies: ["E2EHarness", "ConsumerRuntime", "ReplicationCore", "MySQLTarget", "PubSubTransport"]),
         .testTarget(name: "ReplicationCoreTests", dependencies: ["ReplicationCore"]),
-        .testTarget(name: "E2EHarnessTests", dependencies: ["E2EHarness", "ReplicationCore"]),
+        .testTarget(name: "E2EHarnessTests", dependencies: ["E2EHarness", "ReplicationCore", "MySQLTarget", "PubSubTransport",
+            .product(name: "MySQLNIO", package: "mysql-nio"),
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "GRPC", package: "grpc-swift"),
+        ]),
     ],
     swiftLanguageModes: [.v5]
 )
