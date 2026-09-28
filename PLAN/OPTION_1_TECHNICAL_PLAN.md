@@ -88,6 +88,8 @@ Completed locally on 2026-09-28. See [Phase 4 results](PHASE_4_RESULTS.md). `mak
 
 ## Phase 5 — Complete the scenario suite and assess the POC
 
+Completed locally on 2026-09-28 with `make phase5` (six mandatory gates) and opt-in `make e2e-load` (2,009 events). See [Phase 5 assessment](PHASE_5_RESULTS.md) for measured performance and limitations. Unsupported/malformed-event repair is explicitly fail-closed: exact-byte retry without correcting the parser/policy fails and retains the block; successful repair of fixable target drift is covered separately by Phase 4. No skip/replacement-payload operation is introduced.
+
 | Scenario | Required evidence |
 | --- | --- |
 | Fresh schema + append workload | Source-only DDL creates matching target schema; every inserted row arrives |
@@ -111,7 +113,7 @@ Make workload size, write rate, seed, and convergence timeout configurable. Use 
 
 ## Developer commands
 
-The core commands below are implemented through Phase 4. The load suite remains a Phase 5 deliverable:
+The commands below are implemented through Phase 5:
 
 ```sh
 make up                         # Build/start the local POC and wait for readiness
@@ -119,7 +121,8 @@ make e2e                        # Isolated clean run of the current smoke scenar
 make e2e SCENARIO=schema-change  # Run one scenario
 make e2e-checks                  # Smoke suite + missing-event/wrong-value assertion checks
 make phase4                      # Crash/outage/duplicate/quarantine/repair recovery gate
-make e2e-load                    # Planned: larger configurable load suite (Phase 5)
+make phase5                      # Complete mandatory matrix, using isolated fresh stacks
+make e2e-load                    # Larger transaction + continuing writes + load measurements
 make down                       # Stop without deleting persisted state
 make reset                      # Explicitly remove this POC's volumes/state
 ```

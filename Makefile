@@ -1,4 +1,4 @@
-.PHONY: up down reset phase1 phase2 phase4 e2e e2e-checks mysql57-checks test logs
+.PHONY: up down reset phase1 phase2 phase4 phase5 e2e e2e-load e2e-checks mysql57-checks test logs
 up:
 	docker compose up --build -d --wait --wait-timeout 240
 down:
@@ -11,6 +11,10 @@ phase2:
 	bash scripts/phase2.sh
 phase4:
 	bash scripts/phase4.sh
+phase5:
+	bash scripts/phase5-suite.sh
+e2e-load:
+	ROWS=$${ROWS:-1000} WRITE_INTERVAL_MS=$${WRITE_INTERVAL_MS:-1} CONVERGENCE_TIMEOUT=$${CONVERGENCE_TIMEOUT:-600} E2E_MAX_SECONDS=$${E2E_MAX_SECONDS:-1800} bash scripts/phase5.sh workload
 e2e:
 	bash scripts/e2e.sh
 e2e-checks:

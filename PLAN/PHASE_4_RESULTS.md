@@ -1,6 +1,6 @@
 # Phase 4 — Recovery, duplicate handling and durable quarantine
 
-Validated locally on 2026-09-28, after the separately committed Phase 3 checkpoint **`573ed9d`**. Phase 4 changes are left uncommitted for review.
+Validated locally on 2026-09-28, after the separately committed Phase 3 checkpoint **`573ed9d`**. Reviewed Phase 4 changes were subsequently committed as **`b62355c`**.
 
 ## Exit gate
 

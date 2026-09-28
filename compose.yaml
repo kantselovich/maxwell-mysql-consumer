@@ -1,7 +1,7 @@
 name: maxwell-poc
 
 x-app: &app
-  image: maxwell-poc-swift:phase4
+  image: maxwell-poc-swift:phase5
   environment: &app-environment
     SOURCE_HOST: mysql84
     TARGET_HOST: mysql57

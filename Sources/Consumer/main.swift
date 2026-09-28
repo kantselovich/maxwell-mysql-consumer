@@ -23,6 +23,7 @@ enum Main {
             case "verify-replay": try await PhaseOne.verifyReplay(pubsub, settings: settings)
             case "phase2": try await PhaseTwo.run(pubsub, settings: settings)
             case "phase4": try await PhaseFour(pubsub: pubsub, settings: settings).run(CommandLine.arguments.dropFirst(2).first ?? "verify")
+            case "phase5": try await PhaseFive(pubsub: pubsub, settings: settings).run(CommandLine.arguments.dropFirst(2).first ?? "verify")
             case "e2e": try await ScenarioHarness.run(pubsub, settings: settings)
             case "harness-check-negative": try ScenarioHarness.checkNegativeResult(settings: settings)
             case "recovery-tests": try await PhaseTwo.recovery(settings: settings)

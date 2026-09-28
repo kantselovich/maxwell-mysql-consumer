@@ -12,6 +12,8 @@ Phase 3 is validated: [reusable harness and negative assertion results](PLAN/PHA
 
 Phase 4 is validated: [crash/outage recovery, quarantine and repair results](PLAN/PHASE_4_RESULTS.md).
 
+Phase 5 is validated: [complete scenario matrix, measured load results and assessment](PLAN/PHASE_5_RESULTS.md).
+
 ## Run
 
 Prerequisite: Docker with Compose v2 and enough resources to build Swift and run two databases plus Java services. A host Swift installation and GCP credentials are not required. First startup downloads images and builds dependencies; subsequent builds use Docker caching.
@@ -22,6 +24,8 @@ make e2e-checks # Smoke suite plus deliberate missing-event/wrong-value checks
 make mysql57-checks # Three fresh target DB starts, each with a warm restart
 make phase2   # Fresh isolated stack: schema/data convergence and recovery checks
 make phase4   # Fresh isolated stack: real crashes, outages, quarantine and repair
+make phase5   # All mandatory scenario gates (multiple fresh stacks)
+make e2e-load # Opt-in: 1,000-row transaction + 1,000 continuing writes
 make up       # Build/start the default persistent stack with the applier
 make phase1   # Run compatibility checks and actual Maxwell binlog replay
 make logs
@@ -58,7 +62,28 @@ The underlying harness exits 1 in both cases. The self-test runner succeeds only
 
 Evidence is under `artifacts/maxwell-e2e-*/`: configuration/seed, workload plans, expected event manifest, raw deliveries (including duplicates and any DLQ records), semantic schema/row comparisons, explicit diffs, ledger/journal/checkpoints, scenario and run JSON results, versions, build/startup/harness/service logs, container/image state and capture checkpoint. Per-service `*-container.json` and `*-processes.txt` preserve health-check history and process state before cleanup, including when startup fails before the harness launches. `host-result.json` distinguishes the host/self-test exit code from the actual harness exit code. Inspect `run-result.json` and `*-diffs.json` first on assertion failure, or `startup.log` and the affected service's diagnostics on startup failure.
 
-The host runner owns container lifecycle and the timeout; no Docker socket is mounted in Swift. Successful runs remove only their own containers/volumes and retain artifacts. `KEEP_ON_FAILURE=1` retains failed infrastructure and its volumes for inspection. Use the printed project name with `docker compose -p NAME logs`; when finished, `docker compose -p NAME down --volumes --remove-orphans` removes that disposable project. Existing Phase 1/2 stacks are not reset. Phase 4 adds real restart/outage and quarantine/repair tests below; the broader Phase 5 load/type scenario matrix remains subsequent work. `make phase2` still runs the detailed type-boundary and target-journal regression checks.
+The host runner owns container lifecycle and the timeout; no Docker socket is mounted in Swift. Successful runs remove only their own containers/volumes and retain artifacts. `KEEP_ON_FAILURE=1` retains failed infrastructure and its volumes for inspection. Use the printed project name with `docker compose -p NAME logs`; when finished, `docker compose -p NAME down --volumes --remove-orphans` removes that disposable project. Existing stacks are not reset. Phase 4 adds real restart/outage and quarantine/repair tests below; Phase 5 aggregates the scenario matrix and load assessment. `make phase2` still runs the detailed type-boundary and target-journal regression checks.
+
+## Complete suite and load assessment (Phase 5)
+
+`make phase5` runs six mandatory gates: Phase 3 smoke/assertion self-tests, Phase 2 type/key/DDL checks, Phase 4 recovery, malformed input, unsupported source DDL, and transaction/load checks. A failed gate stops the suite; `artifacts/maxwell-phase5-suite-*/suite-result.json` records completed versus required gates. Its logs identify every child evidence directory. No scenario is silently skipped. The final workload gate rebuilds/reseeds a fresh source history after the emulator-loss and poison tests; it does not resume a lost queue.
+
+```sh
+bash scripts/phase5.sh workload    # Only new transaction/backlog gate (12 + 12 rows)
+bash scripts/phase5.sh malformed   # Raw invalid JSON: durable block, restart, failed repair
+bash scripts/phase5.sh unsupported # Actual source MODIFY COLUMN: same fail-closed checks
+make e2e-load ROWS=1000 SEED=42 WRITE_INTERVAL_MS=1
+```
+
+The workload verifies a six-event multi-row/multi-table transaction, repeated updates and delete within it, and a rolled-back insert/update/delete transaction. With the consumer stopped, it commits another `ROWS`-event transaction spanning two tables. The host explicitly rotates source binlogs, records a recovery boundary, starts the consumer, then writes `ROWS` more autocommit events while the backlog drains. Ordered audit events, transaction IDs/offsets/final-row markers, target commit order, full ledger payloads, independent schemas/rows, final checkpoint, empty head/journal and zero DLQ/quarantine must all agree. Rollback operations are deliberately absent from the independently generated manifest, so any leaked intermediate event fails verification.
+
+The existing `ROWS` (2–5000), `SEED`, `WRITE_INTERVAL_MS`, `CONVERGENCE_TIMEOUT` and `DRAIN_SECONDS` settings apply. `make e2e-load` defaults to 1000 rows in each segment, 1 ms requested pacing, a 600-second convergence limit and an 1800-second host watchdog **per probe**; the small suite defaults to 12, 10 ms, 60 and 300 respectively. SQL, evidence writes and observation add to pacing. Increase watchdog/timeouts for slow hosts. This is a bounded load characterization, not a soak test or capacity/SLA guarantee.
+
+Small backlogs may drain before the continuing writer starts. `backlogAtStreamStart` records this explicitly; runs with `ROWS >= 1000` require a nonzero backlog at that point to establish actual overlap.
+
+Evidence under `artifacts/maxwell-phase5-*/` includes intent/model/audit/observations in `load-state.json`, commit-ordered `load-ledger.json`, raw latency samples, `load-metrics.json`, explicit binlog rotation, versions/images and timestamped Docker memory/CPU samples for consumer and Maxwell. Latency starts immediately before the source autocommit statement or transaction COMMIT and ends at first polling observation of its ledger entry. It is an upper bound including outages, start/probe overhead and observer delay (every ten streaming writes, then roughly every 100 ms); it is **not** native commit-to-commit latency. Backlog events/second is initial unapplied DML divided by time from the pre-start marker until all those events are observed applied, while new writes continue. Stream events/second includes writing, convergence and the final drain window. Docker memory is sampled, not an allocator high-water mark. Debug builds, instrumentation, QEMU and shared Docker resources materially affect results.
+
+Negative poison gates require exactly one unique diagnostic, original bytes/message/source identity, the expected parse/policy reason, a retained blocked head, unchanged ledger/checkpoint/schema, and proof a captured following event never applies. Restart and exact-byte repair without a code/policy fix must leave the block intact. **Malformed bytes and unsupported DDL are not automatically repairable**; the command cannot skip or replace them. Successful exact-byte repair is tested by Phase 4's target-drift fixtures. A reviewed decoder/policy fix or an explicit disposable rebuild is required for these negative fixtures; the suite does not claim successful in-place repair of them.
 
 ## Recovery and quarantine (Phase 4)
 
@@ -104,7 +129,7 @@ Supported DDL is intentionally narrow:
 
 Capture configuration is part of the wire contract: `binlog_row_image=FULL`, no excluded columns, and **`output_nulls=false`**. An omitted column means SQL NULL; an explicit JSON null means JSON `null`. Maxwell's [JSON writer](https://github.com/zendesk/maxwell/blob/v1.46.0/src/main/java/com/zendesk/maxwell/row/MaxwellJson.java) retains raw JSON null while omitting SQL NULL. Changing this setting independently of the applier is unsafe. Existing Phase 1 queued payloads are not a migration path: use a fresh project/history for Phase 2. The new target metadata grant also requires fresh volumes; init SQL does not rerun against old volumes.
 
-The pinned Maxwell build includes a tested adapter for standalone index DDL, which upstream otherwise blacklists. It routes these events through Maxwell's normal schema history/filter/DDL publisher without changing its row decoder. Broader operations Maxwell suppresses (for example TRUNCATE, triggers and procedures) are outside this POC; do not use them and assume they will reach the consumer. General capture coverage and negative scenarios remain follow-up work.
+The pinned Maxwell build includes a tested adapter for standalone index DDL, which upstream otherwise blacklists. It routes these events through Maxwell's normal schema history/filter/DDL publisher without changing its row decoder. Broader operations Maxwell suppresses (for example TRUNCATE, triggers and procedures) are outside this POC; do not use them and assume they will reach the consumer. Phase 5 tests captured-but-unsupported MODIFY COLUMN; general capture coverage remains follow-up work.
 
 ## Phase 1 checks
 
