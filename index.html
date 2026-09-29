@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="generator" content="Observable Framework v1.13.4">
+<title>MySQL Third-Party Replication POC</title>
+
+<link rel="preload" as="style" href="./_import/style.78fcd947.css">
+<link rel="stylesheet" type="text/css" href="./_import/style.78fcd947.css">
+<link rel="modulepreload" href="./_observablehq/client.f067f953.js">
+<link rel="modulepreload" href="./_observablehq/runtime.fa9f71c0.js">
+<link rel="modulepreload" href="./_observablehq/stdlib.60afab10.js">
+<link rel="modulepreload" href="./_import/components/introduction.ea0b6e59.js">
+<link rel="modulepreload" href="./_import/generated/mermaid.06cf8992.js">
+<link rel="modulepreload" href="./_import/components/dashboard.950ae7a3.js">
+<link rel="modulepreload" href="./_import/components/report-source.55384d21.js">
+<link rel="modulepreload" href="./_import/components/configuration.2f030f61.js">
+<link rel="modulepreload" href="./_import/components/ui.055920a5.js">
+<link rel="modulepreload" href="./_import/components/data.7cf45d44.js">
+<link rel="modulepreload" href="./_import/components/architecture.39c1cfa8.js">
+<link rel="modulepreload" href="./_import/components/stories.daaf38b0.js">
+<link rel="modulepreload" href="./_import/components/database.c35a8083.js">
+<link rel="modulepreload" href="./_import/components/database-data.26a018a5.js">
+<script id="dashboard-snapshot" type="application/json">{"schemaVersion":1,"generatedAt":"2026-09-29T16:07:09.837Z","runIds":["maxwell-e2e-1790647808-99305","maxwell-phase4-1790647934-282","maxwell-phase5-workload-1790648490-4806"],"evidencePolicy":"Recorded checks and sanitized numeric samples; raw artifacts remain local."}</script>
+<script type="module">
+
+import {define} from "./_observablehq/client.f067f953.js";
+
+define({id: "f1cbebcb", outputs: ["introduction"], body: async () => {
+const {introduction} = await import("./_import/components/introduction.ea0b6e59.js");
+await introduction(document.querySelector("#introduction"));
+return {introduction};
+}});
+
+</script>
+</head>
+<body>
+<div id="observablehq-center">
+<main id="observablehq-main" class="observablehq">
+<div class="dashboard narrative introduction" id="introduction">
+<h1 id="my-sql-third-party-replication-poc" tabindex="-1"><a class="observablehq-header-anchor" href="#my-sql-third-party-replication-poc">MySQL Third-Party Replication POC</a></h1>
+<p>This POC tests replication from <strong>MySQL 8.4 to MySQL 5.7</strong> using Maxwell, Pub/Sub and a custom Swift consumer. It covers schema and data changes, recovery from service interruptions, and handling of invalid events.</p>
+<h2 id="architecture-under-test" tabindex="-1"><a class="observablehq-header-anchor" href="#architecture-under-test">Architecture under test</a></h2>
+<div id="architecture-diagram" aria-label="POC architecture including the test harness and dead-letter queue" role="img"></div>
+<p><strong>Maxwell's daemon</strong> is a background process that reads MySQL's binary log, the database's record of changes. It converts those changes into JSON events and publishes them to Pub/Sub.</p>
+<p><strong>Google Cloud Pub/Sub</strong> is a messaging service. Publishers send messages to a topic, and subscribers receive them through subscriptions. This POC uses its local emulator to carry events from Maxwell to the Swift consumer. A separate audit subscription lets the harness check the same event stream.</p>
+<p><strong>The Swift consumer</strong> applies schema and data changes to the target database, one event at a time. It tracks applied events and recovery state in the target's <code>cdc_meta</code> schema.</p>
+<p><strong>Dead-letter queue (DLQ):</strong> when an event cannot be applied, the consumer holds it for repair, pauses later changes and publishes a diagnostic to a separate Pub/Sub topic. Each test page shows the observed DLQ delivery count, including <strong>0</strong>.</p>
+<h2 id="how-the-poc-is-tested" tabindex="-1"><a class="observablehq-header-anchor" href="#how-the-poc-is-tested">How the POC is tested</a></h2>
+<p>Docker Compose starts a group of containers from <code>compose.yaml</code>: MySQL 8.4 is the source, MySQL 5.7 is the target, and Maxwell, the Pub/Sub emulator and the Swift consumer carry changes between them. A short-lived <code>pubsub-init</code> container creates the topics and subscriptions before Maxwell starts.</p>
+<p>Each test run gets its own containers, network and new database storage. The Swift test harness runs in the <code>e2e</code> container after the replication services are ready. It creates the test database and tables on MySQL 8.4, writes rows there, and compares MySQL 5.7 with the expected table definitions, data and events.</p>
+<div id="docker-configuration"></div>
+<p>For recovery tests, the host scripts interrupt services between harness checks. Invalid-input tests check that the consumer retains the failed event and its diagnostic while later changes wait. Load tests also measure processing time and memory use for Maxwell and the consumer.</p>
+<p>Results, database comparisons and logs are saved under <code>artifacts/</code>. This dashboard displays those records, with a run selector and rerun commands on each test page.</p>
+<p>After each run, the script removes that run's containers and database storage and keeps the saved results. Add <code>KEEP_STACK=1</code> to a test command to keep its containers and databases available for inspection.</p>
+</div>
+<div class="observablehq observablehq--block"><!--:f1cbebcb:--></div>
+</main>
+</div>
+</body>
+</html>

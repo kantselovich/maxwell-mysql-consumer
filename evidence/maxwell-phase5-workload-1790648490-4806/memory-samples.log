@@ -1,0 +1,92 @@
+2026-09-29T02:22:07.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"4.266MiB / 0MiB"}
+2026-09-29T02:22:07.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"215MiB / 0MiB"}
+2026-09-29T02:22:12.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"4.551MiB / 0MiB"}
+2026-09-29T02:22:12.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"215.1MiB / 0MiB"}
+2026-09-29T02:22:16.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"4.332MiB / 0MiB"}
+2026-09-29T02:22:16.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"215.5MiB / 0MiB"}
+2026-09-29T02:22:21.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"0MiB / 0MiB"}
+2026-09-29T02:22:21.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"215.5MiB / 0MiB"}
+2026-09-29T02:22:25.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"0MiB / 0MiB"}
+2026-09-29T02:22:25.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"236MiB / 0MiB"}
+2026-09-29T02:22:29.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"0MiB / 0MiB"}
+2026-09-29T02:22:29.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"286.2MiB / 0MiB"}
+2026-09-29T02:22:33.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"0MiB / 0MiB"}
+2026-09-29T02:22:33.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"289.8MiB / 0MiB"}
+2026-09-29T02:22:36.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"4.555MiB / 0MiB"}
+2026-09-29T02:22:36.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"293MiB / 0MiB"}
+2026-09-29T02:22:41.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.305MiB / 0MiB"}
+2026-09-29T02:22:41.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"293.6MiB / 0MiB"}
+2026-09-29T02:22:46.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.074MiB / 0MiB"}
+2026-09-29T02:22:46.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"294.6MiB / 0MiB"}
+2026-09-29T02:22:50.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"4.688MiB / 0MiB"}
+2026-09-29T02:22:50.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"295.8MiB / 0MiB"}
+2026-09-29T02:22:54.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"4.762MiB / 0MiB"}
+2026-09-29T02:22:54.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"301.2MiB / 0MiB"}
+2026-09-29T02:22:59.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.012MiB / 0MiB"}
+2026-09-29T02:22:59.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"298.9MiB / 0MiB"}
+2026-09-29T02:23:03.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.023MiB / 0MiB"}
+2026-09-29T02:23:03.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"298.9MiB / 0MiB"}
+2026-09-29T02:23:07.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.031MiB / 0MiB"}
+2026-09-29T02:23:07.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299MiB / 0MiB"}
+2026-09-29T02:23:12.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.043MiB / 0MiB"}
+2026-09-29T02:23:12.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299.1MiB / 0MiB"}
+2026-09-29T02:23:15.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.293MiB / 0MiB"}
+2026-09-29T02:23:15.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299.1MiB / 0MiB"}
+2026-09-29T02:23:20.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.066MiB / 0MiB"}
+2026-09-29T02:23:20.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299.1MiB / 0MiB"}
+2026-09-29T02:23:24.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.559MiB / 0MiB"}
+2026-09-29T02:23:24.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299.2MiB / 0MiB"}
+2026-09-29T02:23:28.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.215MiB / 0MiB"}
+2026-09-29T02:23:28.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299.3MiB / 0MiB"}
+2026-09-29T02:23:33.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.285MiB / 0MiB"}
+2026-09-29T02:23:33.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299.3MiB / 0MiB"}
+2026-09-29T02:23:37.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"5.238MiB / 0MiB"}
+2026-09-29T02:23:37.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299.3MiB / 0MiB"}
+2026-09-29T02:23:42.000Z
+{"Name":"snapshot-consumer-1","MemUsage":"4.992MiB / 0MiB"}
+2026-09-29T02:23:42.000Z
+{"Name":"snapshot-maxwell-1","MemUsage":"299.3MiB / 0MiB"}
