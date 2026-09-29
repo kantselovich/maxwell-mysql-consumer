@@ -49,3 +49,24 @@ The corrections below and the subsequent copy cleanup were reviewed and approved
 - Omitted empty container/log/comparison sections and kept explicit missing values for measured results, including the DLQ. Invalid-input pages explain which events their counts include.
 - Added browser checks for the component explanations and the absence of next-step links, repeated coverage and Git metadata, using a dirty-worktree fixture.
 - Verification: type checking, 31 Node tests and 34 Playwright checks passed, including a strict rerun against the eight updated visual baselines. The local viewer was rebuilt with the existing artifacts.
+
+## Plain-language procedures and Compose inspection
+
+Rechecked the introduction, procedures, selected-experiment descriptions and verification text against the host scripts and Swift harness. Replaced abstract setup terms with the actual containers, source SQL actions and target checks.
+
+| Page | Implementation checked | Description now names |
+| --- | --- | --- |
+| Introduction | `compose.yaml`, `compose.phase4.yaml`, host runner setup/cleanup | Each container's role, Pub/Sub initialization, the e2e harness, per-run database storage, saved artifacts and KEEP_STACK |
+| Basic replication | `scripts/e2e-checks.sh`, `scripts/e2e.sh`, `ScenarioHarness.swift`, `Scenario.swift` | Initial database/table/row replication; inserts, updates, deletes, column/index changes; final numbered row; deliberate missing-event and wrong-value checks |
+| Recovery | `scripts/phase4.sh`, `PhaseFour.swift` | Consumer exits during row/schema changes; MySQL/Maxwell interruptions; replayed update; two missing-target-row repairs; subscription loss after emulator restart |
+| Failure handling and load | `scripts/phase5.sh`, `PhaseFive.swift` | Creation of poc and two empty tables; direct invalid JSON versus captured MODIFY COLUMN; later insert held behind the failed event; committed and rolled-back transactions; waiting changes and continued writes |
+
+Added page-named Make targets while retaining existing scripts and phase commands. `test-basic-replication` keeps the reviewed 250 ms pacing; `test-load` keeps the existing load defaults. Make dry runs confirmed every alias reaches the intended runner and that plain `make` still starts the original `up` target.
+
+The introduction and each test page can load the actual current `compose.yaml` as inert text. Recovery also loads `compose.phase4.yaml`. The local source allowlist and path-boundary checks protect these routes; static snapshots omit the configuration viewer. Browser checks cover lazy loading, service names, the recovery override, text response headers and denied paths.
+
+The replication application and scenario scripts are unchanged. Verification covers the reporting build, unit checks and desktop/narrow browser checks; no new replication workload was run for this wording/configuration-view update.
+
+Verification passed: TypeScript checks, 69 Node tests and 50 Playwright checks, including a strict rerun against reviewed screenshots. The local viewer and watcher were rebuilt and restarted with the revised pages.
+
+After review, removed the introduction's "Read the results in this order" heading and page cards. Navigation remains at the top, including in static exports. Added a prominent repository README quick start covering dashboard startup, the command for each test page, Follow latest, retained containers and dashboard shutdown. The dashboard README links to the same workflow. The plain-language procedures, Compose viewer and command aliases were approved for commit with these final corrections.

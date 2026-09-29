@@ -33,7 +33,9 @@ test("introduction explains the experiment and includes harness, evidence and DL
   await expect(page.locator('[id="next-step"], a[href*="next-step"]')).toHaveCount(0);
   await expect(page.getByRole("heading", {name: "What this POC can establish"})).toHaveCount(0);
   await expect(page.getByText("From source to proof.", {exact: true})).toHaveCount(0);
-  await page.locator(".test-chapters").getByRole("link", {name: /Basic replication/}).click();
+  await expect(page.getByRole("heading", {name: "Read the results in this order"})).toHaveCount(0);
+  await expect(page.locator(".test-chapters")).toHaveCount(0);
+  await page.getByRole("navigation", {name: "POC pages"}).getByRole("link", {name: "Basic replication", exact:true}).click();
   await expect(page.getByRole("heading", {name: "Basic replication", exact: true})).toBeVisible();
 });
 test("test pages omit Git housekeeping and repeated coverage while retaining results", async ({page, request}) => {
@@ -90,13 +92,13 @@ test("component counts, container details, service logs and source links use saf
 test("recovery and poison runs show nonzero DLQ without conflating deliveries and failures", async ({page}) => {
   await open(page, "/recovery?run=maxwell-phase4-fixture");
   await dlqCount(page, "DLQ deliveries", "3"); await dlqCount(page, "Unique failures", "2"); await dlqCount(page, "Expected failures", "2");
-  await expect(page.getByText(/final emulator-loss check confirmed/)).toBeVisible();
+  await expect(page.getByText(/final check confirmed that the consumer reports an error/)).toBeVisible();
   await open(page, "/failures?run=maxwell-phase5-malformed-fixture");
   await dlqCount(page, "DLQ deliveries", "1"); await dlqCount(page, "Unique failures", "1");
   await expect(page.getByText(/Applying that event requires a repair/)).toBeVisible();
   await expect(page.getByLabel("Test run").locator("option").filter({hasText: "suite"})).toHaveCount(0);
 });
-for (const [path, commands] of [["/basics", ["make e2e-checks WRITE_INTERVAL_MS=250"]], ["/recovery", ["make phase4"]], ["/failures", ["bash scripts/phase5.sh malformed", "bash scripts/phase5.sh unsupported", "make e2e-load"]]] as const) {
+for (const [path, commands] of [["/basics", ["make test-basic-replication"]], ["/recovery", ["make test-recovery"]], ["/failures", ["make test-invalid-json", "make test-unsupported-schema", "make test-load"]]] as const) {
   test(`${path} provides rerun commands before run selection`, async ({page}) => {
     await open(page, path);
     const block = page.locator(".run-command pre code");
@@ -106,6 +108,30 @@ for (const [path, commands] of [["/basics", ["make e2e-checks WRITE_INTERVAL_MS=
     await expect(page.locator('a[href^="/evidence"]')).toHaveCount(0);
   });
 }
+test("every page explains concrete actions and loads its actual Compose files as text", async ({page, request}) => {
+  for (const path of ["/", "/basics?run=maxwell-e2e-positive", "/recovery", "/failures"]) {
+    await open(page, path);
+    expect(await page.locator(".narrative").textContent()).not.toMatch(/fresh stack|valid baseline|seeded workload|commit boundaries|target-drift/i);
+    const configuration = page.locator(".compose-configuration");
+    await expect(configuration.locator("pre")).toHaveCount(0);
+    await configuration.getByText("View Docker Compose configuration", {exact:true}).click();
+    const base = configuration.getByLabel("compose.yaml", {exact:true});
+    await expect(base).toContainText("services:");
+    for (const service of ["mysql84:", "mysql57:", "pubsub:", "pubsub-init:", "maxwell:", "consumer:", "e2e:"]) await expect(base).toContainText(service);
+    const response = await request.get("/api/source?path=compose.yaml");
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("text/plain");
+    expect(response.headers()["content-security-policy"]).toContain("sandbox");
+    expect(await base.textContent()).toBe(await response.text());
+    if (path==="/recovery") await expect(configuration.getByLabel("compose.phase4.yaml", {exact:true})).toContainText('ENABLE_FAULT_INJECTION: "1"');
+    else await expect(configuration.getByLabel("compose.phase4.yaml", {exact:true})).toHaveCount(0);
+    if(path==="/failures") {
+      await expect(page.getByText(/two empty tables, load_a and load_b/)).toBeVisible();
+      await expect(page.getByText(/These waiting events are the backlog/)).toBeVisible();
+    }
+  }
+  for (const path of ["compose.dashboard.yaml", "../compose.yaml", ".env"]) expect((await request.get(`/api/source?path=${encodeURIComponent(path)}`)).status()).toBe(404);
+});
 test("counts and negative-test assertions remain available on the test page", async ({page}) => {
   await open(page, "/basics?run=maxwell-e2e-positive");
   const counts = page.getByRole("table", {name: "Recorded result counts"});

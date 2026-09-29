@@ -22,19 +22,17 @@ This POC tests replication from **MySQL 8.4 to MySQL 5.7** using Maxwell, Pub/Su
 
 ## How the POC is tested
 
-The databases, Maxwell, Pub/Sub emulator, consumer and harness run in an isolated Docker Compose stack. The Swift harness runs in the `e2e` service. It creates schemas and writes data on the source, then compares both databases with the planned schemas, rows and events.
+Docker Compose starts a group of containers from `compose.yaml`: MySQL 8.4 is the source, MySQL 5.7 is the target, and Maxwell, the Pub/Sub emulator and the Swift consumer carry changes between them. A short-lived `pubsub-init` container creates the topics and subscriptions before Maxwell starts.
+
+Each test run gets its own containers, network and new database storage. The Swift test harness runs in the `e2e` container after the replication services are ready. It creates the test database and tables on MySQL 8.4, writes rows there, and compares MySQL 5.7 with the expected table definitions, data and events.
+
+<div id="docker-configuration"></div>
 
 For recovery tests, the host scripts interrupt services between harness checks. Invalid-input tests check that the consumer retains the failed event and its diagnostic while later changes wait. Load tests also measure processing time and memory use for Maxwell and the consumer.
 
 Results, database comparisons and logs are saved under `artifacts/`. This dashboard displays those records, with a run selector and rerun commands on each test page.
 
-## Read the results in this order
-
-<div class="test-chapters">
-<a href="/basics"><span>1 · Phase 3</span><strong>Basic replication</strong><p>Do supported schema and data changes arrive correctly? Does the verifier detect missing or incorrect data?</p></a>
-<a href="/recovery"><span>2 · Phase 4</span><strong>Recovery</strong><p>What happens when services stop, events are replayed, or target errors need repair?</p></a>
-<a href="/failures"><span>3 · Phase 5</span><strong>Failure handling and load</strong><p>Does invalid input block safely? Do committed changes arrive while a backlog drains?</p></a>
-</div>
+After each run, the script removes that run's containers and database storage and keeps the saved results. Add `KEEP_STACK=1` to a test command to keep its containers and databases available for inspection.
 
 </div>
 

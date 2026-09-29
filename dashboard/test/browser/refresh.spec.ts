@@ -78,11 +78,12 @@ test("static snapshot works separately with exported checks and numeric charts",
     await page.goto(url);
     await expect(page.locator('.narrative[data-ready="true"]')).toBeVisible();
     await expect(page.getByText(/Snapshot generated 2026-09-28T23:30:00Z/)).toBeVisible();
-    await page.locator(".test-chapters").getByRole("link",{name:/Basic replication/}).click();
+    await page.getByRole("navigation",{name:"POC pages"}).getByRole("link",{name:"Basic replication",exact:true}).click();
     await expect(page.getByLabel("Test run",{exact:true})).toHaveValue("maxwell-e2e-static");
     await expect(page.locator(".run-result .badge")).toHaveText("passed");
     await expect(page.getByRole("table",{name:"Recorded result counts"})).toContainText("2");
     await expect(page.getByLabel("Follow latest")).toHaveCount(0);
+    await expect(page.locator(".compose-configuration")).toHaveCount(0);
     await expect(page.locator('a[href^="/api/"]')).toHaveCount(0);
     const evidence=page.getByRole("link",{name:"Exported checks"}).first();
     const checks=await request.get(url + (await evidence.getAttribute("href"))!); expect(checks.status()).toBe(200);

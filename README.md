@@ -2,6 +2,42 @@
 
 Local MySQL 8.4 → Maxwell → Google Pub/Sub emulator → Swift applier → MySQL 5.7.
 
+## Quick start: dashboard and tests
+
+Start Docker Desktop (or Docker with Compose v2), then run these commands from the repository root. Docker builds the Swift application and dashboard tools. The first build downloads their dependencies.
+
+Start the dashboard and its automatic result watcher:
+
+```sh
+make dashboard
+```
+
+Open [http://localhost:4173](http://localhost:4173). Use the navigation at the top to choose a test page and enable **Follow latest**. The command above returns after starting the dashboard, so you can run a test in the same terminal.
+
+Choose a command for the page you want to demonstrate. Run one command at a time:
+
+| Dashboard page | Test | Command |
+| --- | --- | --- |
+| [Basic replication](http://localhost:4173/basics) | Inserts, updates, deletes, schema changes, and two checks of the test harness | `make test-basic-replication` |
+| [Recovery](http://localhost:4173/recovery) | Service interruptions, replay, target repair and lost Pub/Sub subscriptions | `make test-recovery` |
+| [Failure handling and load](http://localhost:4173/failures) | Invalid JSON message | `make test-invalid-json` |
+| [Failure handling and load](http://localhost:4173/failures) | Unsupported source column change | `make test-unsupported-schema` |
+| [Failure handling and load](http://localhost:4173/failures) | Catch up with waiting changes while more rows are written | `make test-load` |
+
+Leave the page open: new runs and saved results appear automatically. Basic replication produces three runs; its two deliberate-error checks pass when the harness detects the intended missing events or wrong value. Use the **Test run** selector to revisit any result. The load test defaults to 1,000 rows in a transaction followed by 1,000 more inserts; use `make test-load ROWS=100` for a smaller run.
+
+Each test starts its own containers and database storage, then removes them after saving results under `artifacts/`. Add `KEEP_STACK=1` to keep that test's containers and databases for inspection; the command prints instructions to remove them later. **View Docker Compose configuration** on each page shows the files used to start its services.
+
+To stop the dashboard and watcher:
+
+```sh
+make dashboard-stop
+```
+
+Saved results and any retained test containers remain available. For manual refresh, static exports and browser verification, see the [dashboard documentation](dashboard/README.md).
+
+## POC phases and results
+
 Phase 1 establishes compatibility and captures ordered events. Phase 2 adds bounded schema/data replication, durable deduplication and a recoverable DDL journal. See the [phased plan](PLAN/OPTION_1_TECHNICAL_PLAN.md).
 
 Phase 1 is validated: [results and compatibility findings](PLAN/PHASE_1_RESULTS.md), [captured Maxwell messages](Fixtures/phase1/capture.json).
@@ -14,9 +50,9 @@ Phase 4 is validated: [crash/outage recovery, quarantine and repair results](PLA
 
 Phase 5 is validated: [complete scenario matrix, measured load results and assessment](PLAN/PHASE_5_RESULTS.md).
 
-The read-only results dashboard is available: `make dashboard` starts [localhost:4173](http://localhost:4173) and watches for new test results, without starting the replication stack. `make dashboard-view` starts the viewer alone, `make dashboard-data` explicitly imports artifacts, and `make dashboard-build` exports a static snapshot. `make dashboard-test` runs isolated Playwright data, refresh, export and desktop/narrow visual checks; `make dashboard-test-live` verifies a fresh POC run through the watcher. `make dashboard-stop` stops the viewer and watcher. See the [dashboard documentation](dashboard/README.md) and [dashboard plan](PLAN/DASHBOARD_PLAN.md).
-
 ## Run
+
+The phase-numbered commands below remain available alongside the page-named commands in the quick start.
 
 Prerequisite: Docker with Compose v2 and enough resources to build Swift and run two databases plus Java services. A host Swift installation and GCP credentials are not required. First startup downloads images and builds dependencies; subsequent builds use Docker caching.
 
@@ -62,7 +98,7 @@ The generated manifest records every intended DDL operation and each row's full 
 
 The underlying harness exits 1 in both cases. The self-test runner succeeds only when the recorded failure is exactly `event-manifest` or `row-mismatch`, respectively, and all required services remain healthy. Timeouts, startup errors and unexpected success fail the self-test. To see a normal nonzero failing invocation directly: `make e2e SCENARIO=crud HARNESS_FAULT=missing-event` (or `wrong-value`). Do not enable these injectors for a positive replication run.
 
-For a dashboard demonstration, start `make dashboard`, open Basic replication with **Follow latest** enabled, and run `make e2e-checks WRITE_INTERVAL_MS=250`. This single command covers smoke and both verifier checks; paced writes make incoming evidence easier to follow. `make dashboard-test-live` automates this workflow with Chromium open throughout and checks the live count changes and final results.
+For a dashboard demonstration, start `make dashboard`, open Basic replication with **Follow latest** enabled, and run `make test-basic-replication`. This single command covers smoke and both verifier checks; its default 250 ms pause between statements makes incoming evidence easier to follow. `make dashboard-test-live` automates this workflow with Chromium open throughout and checks the live count changes and final results.
 
 The Phase 3 audit/DLQ observer retries temporary Pub/Sub RPC failures up to three times per call, with 250 ms, 500 ms and 1 s backoff. Each RPC retains its five-second deadline; persistent errors still fail the run. `observer-retries.json` records operation, subscription, retry number, timestamp and error. Event validation and expected-failure predicates remain unchanged.
 

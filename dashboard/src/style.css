@@ -84,12 +84,6 @@ summary { cursor: pointer; font-weight: 600; }
 .story-nav { display: flex; flex-wrap: wrap; gap: 6px 18px; border-bottom: 1px solid #cad7d2; padding: 0 0 16px; margin: 0 0 26px; }
 .story-nav a { text-decoration: none; padding: 5px 0; font-size: 14px; }
 .story-nav a[aria-current="page"] { color: #173e40; font-weight: 700; border-bottom: 3px solid #287f70; }
-.test-chapters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 24px 0; }
-.test-chapters a { display: block; padding: 22px; border: 1px solid #c9d8d1; border-radius: 8px; background: white; color: #172f35; text-decoration: none; }
-.test-chapters a:hover { border-color: #287f70; background: #eef5f2; }
-.test-chapters span { display: block; font-size: 12px; color: #53696f; }
-.test-chapters strong { display: block; font-size: 20px; margin-top: 8px; }
-.test-chapters p { margin-bottom: 0; }
 #architecture-diagram { background: white; border: 1px solid #ccd8d4; border-radius: 8px; padding: 20px; margin: 20px 0; }
 #architecture-diagram svg { display: block; width: 100%; height: auto; margin: auto; }
 .run-controls { display: flex; gap: 10px; align-items: end; margin: 24px 0 12px; flex-wrap: wrap; }
@@ -97,6 +91,7 @@ summary { cursor: pointer; font-weight: 600; }
 .run-controls button { font-size: 13px; }
 .run-controls .follow-control { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 10px 0; font-size: 13px; }
 .report-freshness { overflow-wrap: anywhere; }
+.compose-configuration pre { max-height: 32rem; overflow: auto; }
 .local-evidence { color: #53696f; }
 .run-result { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
 .run-id { font-size: 13px; overflow-wrap: anywhere; }
@@ -153,7 +148,6 @@ summary { cursor: pointer; font-weight: 600; }
   .service-card:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -26px; }
   .service-role { min-height: 0; }
   .diagnostic-branch { margin-left: 0; }
-  .test-chapters { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
   .run-controls label { flex-basis: 100%; }

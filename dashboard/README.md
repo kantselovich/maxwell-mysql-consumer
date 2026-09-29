@@ -2,7 +2,13 @@
 
 Phases 1–2 provide an artifact importer, read-only Observable Framework viewer, and Playwright data/visual checks. Presentation updates add the introduction, separate test pages, recorded architecture and saved database views. Phase 3 adds automatic refresh and static snapshots; see [the dashboard plan](../PLAN/DASHBOARD_PLAN.md).
 
-## Run
+## Quick start
+
+With Docker running, use `make dashboard` from the repository root and open [localhost:4173](http://localhost:4173). Choose a page from the top navigation and enable **Follow latest**, then run its **Run this test** command in a terminal. Results refresh while the page stays open. Use `make dashboard-stop` when finished.
+
+The [repository quick start](../README.md#quick-start-dashboard-and-tests) lists the commands for every page. The command-to-script mapping below identifies their runners and Compose files.
+
+## Dashboard tooling commands
 
 From the repository root, with Docker/Compose:
 
@@ -21,7 +27,19 @@ Output: `dashboard/.generated/report.json`, ignored by Git. The standalone Compo
 
 With `make dashboard` running, existing POC commands produce results that appear automatically. The watcher polls artifact metadata once per second, debounces changes, and imports at least every five seconds during continuing writes. Reports are published by atomic rename. The browser polls every two seconds, and a run's evidence revision invalidates its displayed data when supporting files change. No Observable data-loader cache is involved.
 
-The Basic replication page shows `make e2e-checks WRITE_INTERVAL_MS=250`. This runs the full smoke workload followed by the missing-event and wrong-value verifier checks, each in a fresh stack. The pacing makes incoming counts easier to follow. Keep **Follow latest** enabled to see new runs and their evidence as it arrives. Final verdicts appear after host checks and cleanup complete.
+The Basic replication page shows `make test-basic-replication`. This runs the full smoke workload followed by the missing-event and wrong-value verifier checks, each with its own containers and database storage. The default 250 ms pacing makes incoming counts easier to follow. Keep **Follow latest** enabled to see new runs and their evidence as it arrives. Final verdicts appear after host checks and cleanup complete.
+
+Page-named commands map directly to the existing scripts:
+
+| Command | Existing runner | Compose files |
+| --- | --- | --- |
+| `make test-basic-replication` | `scripts/e2e-checks.sh` → `scripts/e2e.sh` | `compose.yaml` |
+| `make test-recovery` | `scripts/phase4.sh` | `compose.yaml` + `compose.phase4.yaml` |
+| `make test-invalid-json` | `scripts/phase5.sh malformed` | `compose.yaml` |
+| `make test-unsupported-schema` | `scripts/phase5.sh unsupported` | `compose.yaml` |
+| `make test-load` | `scripts/phase5.sh workload`, using the existing load defaults | `compose.yaml` |
+
+Older phase-numbered commands remain available. The introduction and each test page offer **View Docker Compose configuration**, which loads these current project files on expansion. Recovery shows the consumer pause-point override as well as the base file. The source endpoint serves only allowlisted files as inert text; static exports omit this local configuration viewer. These files describe the current runner, while the selected run's recorded container details remain its historical evidence.
 
 The page displays reporting freshness and watcher status. **Follow latest** selects newly dated attempts, including failures. Selecting a historical run or pinning it turns following off; its selection remains unchanged as other runs arrive. The latest button or checkbox resumes following. Start-only and interrupted attempts retain incomplete/unknown/failed evidence verdicts until terminal evidence establishes an outcome. Reporting errors preserve the last published report and appear separately from replication verdicts. A stopped or stale watcher is shown as paused.
 
@@ -169,4 +187,4 @@ make dashboard-test
 
 Open `dashboard/playwright-report/index.html` for the test report. Failure screenshots, traces and diffs are retained under `dashboard/test-results/`; both directories are ignored. The initial baselines were visually inspected during implementation and are supplied for user review. They must not be automatically regenerated to silence a failing visual test.
 
-Refresh tests use isolated artifact directories, the real importer/watcher, and independent viewers. They exercise new positive/negative/failed/interrupted runs, historical selection, reporting outages, and recovery. Static browser tests use exported files alone. `make dashboard-test-live` opens Chromium first, checks the displayed command, then executes `make e2e-checks WRITE_INTERVAL_MS=250`. It requires changing captured counts before the smoke workload finishes, automatically selected new runs, and all three successful final verdicts with counts checked against raw evidence and zero DLQ. A page marker verifies that no reload occurred. During-run and final screenshots, sampled counts, trace, harness/browser logs and verdict remain under `dashboard/live-results/live.*`, separate from Playwright's disposable fixture output. The normal harness cleanup/`KEEP_STACK` policy applies to each new run.
+Refresh tests use isolated artifact directories, the real importer/watcher, and independent viewers. They exercise new positive/negative/failed/interrupted runs, historical selection, reporting outages, and recovery. Static browser tests use exported files alone. `make dashboard-test-live` opens Chromium first, checks the displayed command, then executes `make test-basic-replication`. It requires changing captured counts before the smoke workload finishes, automatically selected new runs, and all three successful final verdicts with counts checked against raw evidence and zero DLQ. A page marker verifies that no reload occurred. During-run and final screenshots, sampled counts, trace, harness/browser logs and verdict remain under `dashboard/live-results/live.*`, separate from Playwright's disposable fixture output. The normal harness cleanup/`KEEP_STACK` policy applies to each new run.

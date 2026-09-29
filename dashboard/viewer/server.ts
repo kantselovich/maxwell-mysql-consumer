@@ -59,7 +59,7 @@ export function viewer(options: { artifacts: string; report: string; site: strin
         }
       } else if (url.pathname === "/api/source") {
         const name = url.searchParams.get("path") ?? "";
-        const allowed = ["scripts/e2e.sh", "scripts/phase4.sh", "scripts/phase5.sh", "scripts/phase5-suite.sh", "Sources/E2EHarness/ScenarioHarness.swift", "Sources/E2EHarness/PhaseFour.swift", "Sources/E2EHarness/PhaseFive.swift"];
+        const allowed = ["Makefile", "compose.yaml", "compose.phase4.yaml", "scripts/e2e-checks.sh", "scripts/e2e.sh", "scripts/phase4.sh", "scripts/phase5.sh", "scripts/phase5-suite.sh", "Sources/E2EHarness/ScenarioHarness.swift", "Sources/E2EHarness/Scenario.swift", "Sources/E2EHarness/PhaseFour.swift", "Sources/E2EHarness/PhaseFive.swift"];
         if (!options.repository || !allowed.includes(name)) { res.writeHead(404).end(); return; }
         data = await readFile(await safeFile(options.repository, name)); type = "text/plain";
         res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");

@@ -18,7 +18,7 @@ try {
   await page.goto(`${process.env.DASHBOARD_URL ?? "http://viewer:4173"}/basics`);
   await expect(page.locator('.narrative[data-ready="true"]')).toBeVisible();
   // Fail if the documented command and the command executed by the host drift.
-  const command="make e2e-checks WRITE_INTERVAL_MS=250";
+  const command="make test-basic-replication";
   await expect(page.getByRole("region",{name:"Run this test"}).locator("code")).toHaveText(command);
   await page.evaluate(()=>{(window as unknown as {liveProof:string}).liveProof="same-page";});
   const initial=(await (await page.request.get(`${process.env.DASHBOARD_URL ?? "http://viewer:4173"}/api/report`)).json()).runs.map((r:{id:string})=>r.id);

@@ -1,9 +1,11 @@
 import mermaid from "../generated/mermaid.js";
 import {navigation} from "./dashboard.js";
 import {snapshot} from "./report-source.js";
+import {configuration} from "./configuration.js";
 
 export async function introduction(root) {
   root.prepend(navigation("/"));
+  root.querySelector("#docker-configuration").append(configuration(["compose.yaml"]));
   if (snapshot) {
     const note = document.createElement("p"); note.className = "small report-freshness";
     note.textContent = `Snapshot generated ${snapshot.generatedAt}. Selected runs: ${snapshot.runIds.join(", ")}.`;

@@ -27,7 +27,7 @@ while [ ! -f "$live_artifacts/ready.json" ]; do
   sleep 1
 done
 set +e
-make e2e-checks WRITE_INTERVAL_MS=250 2>&1 | tee "$live_artifacts/harness.log"
+make test-basic-replication 2>&1 | tee "$live_artifacts/harness.log"
 live_harness_exit=${PIPESTATUS[0]}
 set -e
 printf '{"exitCode":%s}\n' "$live_harness_exit" > "$live_artifacts/completed.json"

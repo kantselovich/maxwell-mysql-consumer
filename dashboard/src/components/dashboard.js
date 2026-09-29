@@ -4,6 +4,7 @@ import {architecture, evidence, link, valueText} from "./architecture.js";
 import {stories, metricNames} from "./stories.js";
 import {databaseView} from "./database.js";
 import {snapshot, reportURL, evidenceURL} from "./report-source.js";
+import {configuration} from "./configuration.js";
 
 export function navigation(current) {
   const nav = el("nav", undefined, "story-nav"); nav.setAttribute("aria-label", "POC pages");
@@ -108,6 +109,7 @@ export async function mount(root, phase) {
 
       add(view, databases);
       heading(view, "What the test does"); list(view, story.steps);
+      add(view, configuration(story.compose));
       const selectedScenarios = report.catalog.filter(s => run.scenarioIds.includes(s.id));
       for (const scenario of selectedScenarios) {
         add(view, add(el("article", undefined, "selected-experiment"), el("h3", `Selected experiment: ${scenario.title}`), el("p", scenario.action), el("p", `Expected: ${scenario.expected}`)));
@@ -121,10 +123,10 @@ export async function mount(root, phase) {
       heading(view, "Results for the selected run");
       const summary = run.verdict !== "passed" ? `This run ${run.verdict === "failed" ? "failed" : "cannot yet be verified"}. Review the recorded checks and missing evidence below.` :
         run.expectedOutcome === "expected-failure" ? phase === 3 ? "The verifier detected the deliberately introduced error. The harness self-test passed." : "The expected failure was confirmed. The consumer retained the blocked event and held later changes. Applying that event requires a repair." :
-        phase === 4 ? "The recovery checks passed. The final emulator-loss check confirmed that replication stops visibly when broker resources disappear." : "The selected replication checks passed.";
+        phase === 4 ? "The recovery checks passed. The final check confirmed that the consumer reports an error and stops when restarting the emulator removes its subscriptions." : "The selected replication checks passed.";
       add(view, el("p", summary, run.verdict === "passed" ? "result-summary" : "notice"));
       add(view, table(["Check", "Recorded value", "Evidence"], Object.entries(run.counts).map(([id, fact]) => [({expectedEvents: "Expected events", capturedEvents: "Captured unique events", appliedEvents: "Applied events", dlqDeliveries: "DLQ deliveries", uniqueQuarantines: "Unique failures", expectedQuarantines: "Expected failures"})[id], valueText(fact.value), evidenceRefs(fact.evidence)]), "Recorded result counts"));
-      if (phase === 5 && run.expectedOutcome === "expected-failure") add(view, el("p", "Expected and applied counts cover the valid baseline. Captured events can also include the rejected schema change and the later blocked write.", "small"));
+      if (phase === 5 && run.expectedOutcome === "expected-failure") add(view, el("p", "Expected and applied counts cover creation of the poc database and its two empty tables. Captured events can also include the rejected column change and the later insert waiting to be applied.", "small"));
       add(view, disclosure("Recorded assertions and raw exit codes", el("p", `Host exit: ${valueText(run.rawExitCodes.host.value)}; harness exit: ${valueText(run.rawExitCodes.harness.value)}; failure code: ${valueText(run.failureCode.value)}.`), table(["Result", "Check", "Evidence"], run.assertions.map(a => [badge(a.status), a.description, evidenceRefs(a.evidence)]), "Recorded assertions")));
       const differences = run.evidence.filter(r => /(?:schema|rows|diffs)\.json$/.test(r.path));
       if (differences.length) add(view, disclosure("Schema and row comparison evidence", evidenceRefs(differences)));
