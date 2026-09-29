@@ -21,8 +21,8 @@ export async function mount(root, phase) {
   root.className = "dashboard narrative";
   const story = stories[phase];
   add(root, navigation(story.path), el("p", `MYSQL THIRD-PARTY REPLICATION POC · PHASE ${phase}`, "eyebrow"), el("h1", story.title), el("p", story.question, "lead"), el("p", story.summary));
-  const command = add(el("section", undefined, "run-command"), el("h2", "Run this test"), el("p", story.commandDescription), add(el("pre"), el("code", story.command)), el("p", "With make dashboard running, new results appear automatically. Use make dashboard-data for a manual refresh.", "small"));
-  command.setAttribute("aria-label", "Run this test"); if (!snapshot) add(root, command);
+  const command = add(el("section", undefined, "run-command"), el("h2", "Run this test"), el("p", story.commandDescription), add(el("pre"), el("code", story.command)), el("p", snapshot ? "Run these commands locally from a clone of the repository with Docker running. Published results are updated when a new snapshot is deployed." : "With make dashboard running, new results appear automatically. Use make dashboard-data for a manual refresh.", "small"));
+  command.setAttribute("aria-label", "Run this test"); add(root, command);
   try {
     const response = await fetch(reportURL, {cache:"no-store"});
     if (!response.ok) throw new Error("The report is not available. Run make dashboard-data and reload this page.");

@@ -80,6 +80,8 @@ for (const basePath of ["/", "/maxwell-mysql-consumer/"]) test(`static snapshot 
     await expect(page.getByText(/Snapshot generated 2026-09-28T23:30:00Z/)).toBeVisible();
     await page.getByRole("navigation",{name:"POC pages"}).getByRole("link",{name:"Basic replication",exact:true}).click();
     await expect(page.getByLabel("Test run",{exact:true})).toHaveValue("maxwell-e2e-static");
+    await expect(page.getByRole("region",{name:"Run this test"})).toBeVisible();
+    await expect(page.locator(".run-command pre code")).toHaveText("make test-basic-replication");
     await expect(page.locator(".run-result .badge")).toHaveText("passed");
     await expect(page.getByRole("table",{name:"Recorded result counts"})).toContainText("2");
     await expect(page.getByLabel("Follow latest")).toHaveCount(0);
@@ -89,6 +91,7 @@ for (const basePath of ["/", "/maxwell-mysql-consumer/"]) test(`static snapshot 
     const checks=await request.get(new URL((await evidence.getAttribute("href"))!,page.url()).href); expect(checks.status()).toBe(200);
     expect((await checks.json()).counts.appliedEvents.value).toBe(2);
     await page.getByRole("link",{name:"Failure handling and load",exact:true}).click();
+    await expect(page.locator(".run-command pre code")).toContainText("make test-load");
     await expect(page.locator('[data-service="consumer"]')).toContainText("6 MiB");
     await expect(page.locator('[data-service="maxwell"]')).toContainText("220 MiB");
     await expect(page.getByRole("img",{name:/End-to-end latency distribution/})).toBeVisible();

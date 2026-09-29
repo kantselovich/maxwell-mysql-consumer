@@ -19,6 +19,14 @@ test("npm build packages Observable pages and selected results for GitHub projec
   page.on("requestfailed", req => errors.push(req.url()));
   page.on("response", res => { if (res.status() >= 400) errors.push(`${res.status()} ${res.url()}`); });
   page.on("request", req => requests.push(req.url()));
+  async function commands(expected:string[]) {
+    const section = page.getByRole("region", {name:"Run this test"});
+    await expect(section).toBeVisible();
+    expect((await section.locator("pre code").innerText()).split("\n").filter(line => line.startsWith("make "))).toEqual(expected);
+    await expect(section).toContainText("Run these commands locally from a clone of the repository with Docker running.");
+    await expect(section).not.toContainText("new results appear automatically");
+    expect(await section.evaluate(node => Boolean(node.compareDocumentPosition(document.querySelector(".run-controls")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  }
   try {
     const fixtures = JSON.parse(await readFile("test/fixtures/runs.json", "utf8"));
     for (const id of [...selected, "maxwell-e2e-startup"]) {
@@ -69,6 +77,7 @@ test("npm build packages Observable pages and selected results for GitHub projec
     await nav.getByRole("link", {name:"Basic replication",exact:true}).click();
     await expect(page).toHaveURL(new RegExp("/maxwell-mysql-consumer/basics\\.html"));
     await expect(page.getByLabel("Test run", {exact:true})).toHaveValue(selected[0]);
+    await commands(["make test-basic-replication"]);
     await expect(page.locator(".run-result .badge")).toHaveText("passed");
     await expect(page.locator(".dlq-card")).toContainText("0");
     const checksURL = await page.getByRole("link", {name:"Exported checks"}).first().evaluate((a:HTMLAnchorElement) => a.href);
@@ -76,11 +85,13 @@ test("npm build packages Observable pages and selected results for GitHub projec
     expect((await (await request.get(checksURL)).json()).counts.appliedEvents.value).toBe(2);
     await nav.getByRole("link", {name:"Recovery",exact:true}).click();
     await expect(page.getByLabel("Test run", {exact:true})).toHaveValue(selected[1]);
+    await commands(["make test-recovery"]);
     await expect(page.locator(".dlq-card")).toContainText("3");
     // Direct URLs, query parameters and reload work without a routing server.
     await page.goto(base + "failures.html?run=" + selected[4]);
     await page.reload();
     await expect(page.getByLabel("Test run", {exact:true})).toHaveValue(selected[4]);
+    await commands(["make test-invalid-json", "make test-unsupported-schema", "make test-load"]);
     await expect(page.locator('[data-service="consumer"]')).toContainText("6 MiB");
     await expect(page.locator('[data-service="maxwell"]')).toContainText("220 MiB");
     await expect(page.getByRole("img", {name:/End-to-end latency distribution/})).toBeVisible();
