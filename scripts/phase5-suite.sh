@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/stack-lifecycle.sh
+stack_validate_options
 suite_path="$PWD/artifacts/maxwell-phase5-suite-$(date +%s)-$$"
 mkdir -p "$suite_path"
 export ARTIFACT_PATH="$suite_path"

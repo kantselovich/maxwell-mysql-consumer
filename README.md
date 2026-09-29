@@ -64,7 +64,26 @@ The underlying harness exits 1 in both cases. The self-test runner succeeds only
 
 Evidence is under `artifacts/maxwell-e2e-*/`: configuration/seed, workload plans, expected event manifest, raw deliveries (including duplicates and any DLQ records), semantic schema/row comparisons, explicit diffs, ledger/journal/checkpoints, scenario and run JSON results, versions, build/startup/harness/service logs, container/image state and capture checkpoint. Per-service `*-container.json` and `*-processes.txt` preserve health-check history and process state before cleanup, including when startup fails before the harness launches. `host-result.json` distinguishes the host/self-test exit code from the actual harness exit code. Inspect `run-result.json` and `*-diffs.json` first on assertion failure, or `startup.log` and the affected service's diagnostics on startup failure.
 
-The host runner owns container lifecycle and the timeout; no Docker socket is mounted in Swift. Successful runs remove only their own containers/volumes and retain artifacts. `KEEP_ON_FAILURE=1` retains failed infrastructure and its volumes for inspection. Use the printed project name with `docker compose -p NAME logs`; when finished, `docker compose -p NAME down --volumes --remove-orphans` removes that disposable project. Existing stacks are not reset. Phase 4 adds real restart/outage and quarantine/repair tests below; Phase 5 aggregates the scenario matrix and load assessment. `make phase2` still runs the detailed type-boundary and target-journal regression checks.
+The host runner owns container lifecycle and the timeout; no Docker socket is mounted in Swift. By default, runs remove only their own containers/volumes and retain artifacts. `KEEP_ON_FAILURE=1` retains failed infrastructure and its volumes for inspection. `KEEP_STACK=1` retains the stack after either success or failure. Existing stacks are not reset. Phase 4 adds real restart/outage and quarantine/repair tests below; Phase 5 aggregates the scenario matrix and load assessment. `make phase2` still runs the detailed type-boundary and target-journal regression checks.
+
+### Keep a test stack for inspection
+
+```sh
+make e2e SCENARIO=crud KEEP_STACK=1
+make phase4 KEEP_STACK=1
+make e2e-load KEEP_STACK=1
+KEEP_STACK=1 bash scripts/phase5.sh malformed
+```
+
+`KEEP_STACK` accepts `0` (default cleanup) or `1` (retain on success and failure). `KEEP_ON_FAILURE=1` remains supported and retains failures even with `KEEP_STACK=0`. The test exit code and evidence are preserved in either mode.
+
+A retained run prints its run ID, Compose project, artifact directory, source/target port lookup commands, dashboard link and exact cleanup command. The same instructions are saved in `artifacts/<run>/retained-stack.txt`. The commands include the run's Compose files and environment, including the Phase 4 override. Run the printed dashboard command to import the results and start the viewer. The cleanup command removes only that project's containers and database volumes; saved artifacts remain.
+
+Retention applies to end-of-run cleanup. Test-controlled stops, kills, restarts and timeouts still execute. Containers keep the state left by the test: Phase 2 stops its consumer during target-recovery checks, and Phase 4 ends with a stopped consumer after the emulator-loss check. Completed temporary probes are removed as usual. A startup failure retains the resources created up to that point.
+
+The flag also applies to `make phase2`, `make e2e-checks` and every child of `make phase5`. A complete retained Phase 5 suite keeps eight separate stacks, so use a single scenario for routine inspection and run each printed cleanup command when finished.
+
+Lifecycle regression checks run with `make dashboard-data-test` using an isolated fake Docker executable. See [retention verification](PLAN/STACK_RETENTION_RESULTS.md) for the real retained CRUD run.
 
 ## Complete suite and load assessment (Phase 5)
 
@@ -116,7 +135,7 @@ The final gate restarts the emulator, verifies its resources disappeared, and re
 
 ## Phase 2 checks and contract
 
-`make phase2` creates a uniquely named Compose project, fresh database volumes, a fresh source-history namespace and ephemeral localhost ports. It leaves an existing Phase 1 stack untouched. It removes only its own test containers/volumes after the run; artifacts remain under `artifacts/maxwell-phase2-*/`. Use `KEEP_ON_FAILURE=1 make phase2` to retain a failed stack for inspection. The printed project name can be passed to `docker compose -p NAME logs` or `docker compose -p NAME down --volumes` when finished.
+`make phase2` creates a uniquely named Compose project, fresh database volumes, a fresh source-history namespace and ephemeral localhost ports. It leaves an existing Phase 1 stack untouched. Default cleanup removes its test containers/volumes; artifacts remain under `artifacts/maxwell-phase2-*/`. Use `make phase2 KEEP_STACK=1` to retain any result, or `KEEP_ON_FAILURE=1 make phase2` to retain failures. Follow the printed inspection and cleanup commands.
 
 The Swift harness provisions schemas **only on 8.4** and checks ordered event accounting, normalized schemas, sorted row values, the apply ledger, the final checkpoint, completed DDL journals and an empty DLQ. Its workload covers composite/changed primary keys, repeated updates, deletes, add-column followed immediately by writes, index creation/removal, drop/recreate, unsigned 64-bit integers, DECIMAL(65,30), Unicode, binary, JSON, SQL NULL versus JSON null, and microsecond datetime/timestamps. Republishing an old update must not change newer target state. Separate target integration checks inject errors after mutation to exercise transactional rollback and DDL recovery; these are not process-crash/ACK-boundary tests.
 

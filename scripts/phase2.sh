@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/stack-lifecycle.sh
+stack_validate_options
 # A fresh project never modifies the Phase 1 stack or its volumes. Ephemeral host
 # ports allow repeated runs without port collisions with that stack.
 export COMPOSE_PROJECT_NAME="maxwell-phase2-$(date +%s)-$$"
@@ -16,8 +18,8 @@ cleanup() {
   trap - EXIT
   docker compose logs --no-color > "$ARTIFACT_PATH/compose.log" 2>&1 || true
   docker compose images --format json > "$ARTIFACT_PATH/images.json" 2>&1 || true
-  if [ "$result" -ne 0 ] && [ "${KEEP_ON_FAILURE:-0}" = 1 ]; then
-    printf 'Kept failed project %s. Evidence: %s\n' "$COMPOSE_PROJECT_NAME" "$ARTIFACT_PATH"
+  if stack_should_keep "$result"; then
+    stack_retained_notice 2
   else
     docker compose down --volumes --remove-orphans || result=1
   fi

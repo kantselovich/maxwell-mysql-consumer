@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/stack-lifecycle.sh
+stack_validate_options
 export COMPOSE_PROJECT_NAME="maxwell-e2e-$(date +%s)-$$"
 export SOURCE_ID="$COMPOSE_PROJECT_NAME"
 export CONSUMER_MODE=apply SOURCE_PORT=0 TARGET_PORT=0 PUBSUB_PORT=0
@@ -39,8 +41,8 @@ cleanup() {
   docker compose exec -T mysql57 env MYSQL_PWD=root-local-only mysql -uroot \
     -e 'SELECT * FROM cdc_meta.checkpoints; SELECT event_id,completed FROM cdc_meta.ddl_journal; SELECT event_id FROM cdc_meta.applied_events' \
     > "$ARTIFACT_PATH/target-checkpoint.tsv" 2>&1 || true
-  if [ "$result" -ne 0 ] && [ "${KEEP_ON_FAILURE:-0}" = 1 ]; then
-    printf 'Kept project %s (including volumes); inspect with docker compose -p %s logs\n' "$COMPOSE_PROJECT_NAME" "$COMPOSE_PROJECT_NAME"
+  if stack_should_keep "$result"; then
+    stack_retained_notice 3
   else
     if "$harness_started"; then docker rm -f "$harness_container" >/dev/null || result=1; fi
     docker compose down --volumes --remove-orphans || result=1

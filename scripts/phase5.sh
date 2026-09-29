@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/stack-lifecycle.sh
+stack_validate_options
 mode="${1:-workload}"
 case "$mode" in workload|malformed|unsupported) ;; *) printf 'Unknown Phase 5 mode\n' >&2; exit 2 ;; esac
 host_timeout="${E2E_MAX_SECONDS:-300}"
@@ -36,8 +38,8 @@ cleanup() {
     -e 'SHOW BINARY LOG STATUS; SELECT * FROM maxwell.positions' > "$ARTIFACT_PATH/capture-checkpoint.tsv" 2>&1 || true
   docker compose exec -T mysql57 env MYSQL_PWD=root-local-only mysql -uroot \
     -e 'SELECT * FROM cdc_meta.checkpoints; SELECT * FROM cdc_meta.consumer_head; SELECT * FROM cdc_meta.quarantine' > "$ARTIFACT_PATH/applied-checkpoint.tsv" 2>&1 || true
-  if [ "$result" -ne 0 ] && [ "${KEEP_ON_FAILURE:-0}" = 1 ]; then
-    printf 'Kept project %s; evidence: %s\n' "$COMPOSE_PROJECT_NAME" "$ARTIFACT_PATH"
+  if stack_should_keep "$result"; then
+    stack_retained_notice 5
   else
     if docker inspect "$probe_container" >/dev/null 2>&1; then docker rm -f "$probe_container" >/dev/null || result=1; fi
     docker compose down --volumes --remove-orphans || result=1
