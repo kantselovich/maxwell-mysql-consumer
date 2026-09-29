@@ -1,4 +1,4 @@
-import {el, add} from "./evidence-browser.js";
+import {el, add} from "./ui.js";
 import {shown} from "./data.js";
 
 export const valueText = value => value == null ? "Not recorded" : shown(value);
@@ -13,7 +13,7 @@ function stat(node, label, value, unit = "") {
 
 export function architecture(run, memory = []) {
   const diagram = el("section", undefined, "run-architecture"); diagram.setAttribute("aria-label", "Recorded replication architecture");
-  add(diagram, el("h2", "What happened in this run"), el("p", "Recorded test results, not live container status. Arrows show the direction of changes.", "muted"));
+  add(diagram, el("h2", "What happened in this run"));
   const pipeline = el("div", undefined, "pipeline");
   const names = [["mysql84", "Source database", "MySQL 8.4"], ["maxwell", "Maxwell daemon", "Reads the source binlog"], ["pubsub", "Pub/Sub emulator", "Delivers change events"], ["consumer", "Swift MySQL consumer", "Applies changes in order"], ["mysql57", "Target database", "MySQL 5.7"]];
   const data = run.presentation;
@@ -37,13 +37,17 @@ export function architecture(run, memory = []) {
       if (ref) add(card, evidence(ref, "Memory samples"));
     }
     const snapshot = data?.containers.find(c => c.service === service);
-    const details = el("details"); add(details, el("summary", "Container details"));
-    if (snapshot) add(details, el("p", snapshot.name ?? "Name not recorded"), el("p", snapshot.image ?? "Image not recorded"), el("p", `State when captured: ${valueText(snapshot.state)}`), el("p", `Docker restart counter: ${valueText(snapshot.dockerRestarts)}`), el("p", "This counter is not a complete history of test-induced stops and restarts."), el("p", `Source: ${snapshot.source}. Environment values are not published.`));
-    else add(details, el("p", "Container details were not recorded."));
-    add(card, details);
+    if (snapshot) {
+      const details = el("details"); add(details, el("summary", "Container details"));
+      if (snapshot.name) add(details, el("p", snapshot.name));
+      if (snapshot.image) add(details, el("p", snapshot.image));
+      if (snapshot.state) add(details, el("p", `State when captured: ${snapshot.state}`));
+      if (snapshot.dockerRestarts != null) add(details, el("p", `Docker automatic restarts: ${snapshot.dockerRestarts}`));
+      add(details, el("p", `Source: ${snapshot.source}`)); add(card, details);
+    }
     if (run.evidence.some(r => r.path.endsWith("/compose.log"))) {
       const log = link("Service log", `/api/service-log?run=${encodeURIComponent(run.id)}&service=${service}`); log.target = "_blank"; log.rel = "noopener"; add(card, log);
-    } else add(card, el("span", "Log not recorded", "small muted"));
+    }
     add(pipeline, card);
   }
   add(diagram, pipeline);
@@ -54,7 +58,7 @@ export function architecture(run, memory = []) {
   stat(dlq, "DLQ deliveries", run.counts.dlqDeliveries.value);
   stat(dlq, "Unique failures", run.counts.uniqueQuarantines.value);
   stat(dlq, "Expected failures", run.counts.expectedQuarantines.value);
-  add(dlq, el("p", "A diagnostic records a blocked event. It does not mean the event was skipped. Repeated deliveries may describe the same failure.", "small"));
+  add(dlq, el("p", "Repeated deliveries may describe the same failure.", "small"));
   for (const ref of run.counts.dlqDeliveries.evidence) add(dlq, evidence(ref, "DLQ evidence"));
   add(branch, dlq); add(diagram, branch);
   if (data?.events) {
@@ -62,9 +66,9 @@ export function architecture(run, memory = []) {
     const breakdown = el("div", undefined, "event-breakdown");
     add(breakdown, el("h3", events.basis));
     for (const [label, value] of [["Row-change events", events.rowChanges], ["Schema-change events", events.schemaChanges], ["Other event types", events.otherEvents], ["Unreadable payloads in this list", events.invalidPayloads]]) stat(breakdown, label, value);
-    add(breakdown, el("p", "Includes test setup and marker events. Expected workload counts are not per-container receive counters.", "small"), evidence({path: events.source}, "Event list")); add(diagram, breakdown);
+    add(breakdown, el("p", "Includes test setup and marker events.", "small"), evidence({path: events.source}, "Event list")); add(diagram, breakdown);
   }
   const harness = el("div", undefined, "harness-strip");
-  add(harness, el("h3", "Test harness"), el("p", "Writes to the source → observes events and the DLQ → checks the target → saves results"), el("code", `artifacts/${run.artifactDirectory}/`)); add(diagram, harness);
+  add(harness, el("h3", "Swift test harness · e2e container"), el("p", "Writes to the source → observes events and the DLQ → checks the target → saves results"), el("code", `artifacts/${run.artifactDirectory}/`)); add(diagram, harness);
   return diagram;
 }

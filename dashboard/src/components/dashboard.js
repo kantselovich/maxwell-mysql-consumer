@@ -1,4 +1,4 @@
-import {el, add, heading, badge, table, bars} from "./evidence-browser.js";
+import {el, add, heading, badge, table, bars} from "./ui.js";
 import {orderedRuns, shown, memorySamples, latencyBins} from "./data.js";
 import {architecture, evidence, link, valueText} from "./architecture.js";
 import {stories, metricNames} from "./stories.js";
@@ -18,6 +18,8 @@ export async function mount(root, phase) {
   root.className = "dashboard narrative";
   const story = stories[phase];
   add(root, navigation(story.path), el("p", `MYSQL THIRD-PARTY REPLICATION POC · PHASE ${phase}`, "eyebrow"), el("h1", story.title), el("p", story.question, "lead"), el("p", story.summary));
+  const command = add(el("section", undefined, "run-command"), el("h2", "Run this test"), el("p", story.commandDescription), add(el("pre"), el("code", story.command)), el("p", "Then run make dashboard-data and reload this page to select the new results.", "small"));
+  command.setAttribute("aria-label", "Run this test"); add(root, command);
   try {
     const response = await fetch("/api/report");
     if (!response.ok) throw new Error("The report is not available. Run make dashboard-data and reload this page.");
@@ -38,7 +40,7 @@ export async function mount(root, phase) {
     latest.disabled = !Number.isFinite(Date.parse(runs[0].startedAt.value));
     add(controls, pin, latest); add(root, controls);
     if (requested && !runs.some(r => r.id === requested)) add(root, el("p", "The requested run is not an individual run for this page. Showing the page's default selection.", "notice"));
-    if (runs.some(r => !r.startedAt.value)) add(root, el("p", "Older runs have no recorded date. Dated runs appear first, followed by undated runs sorted by ID; an undated run cannot be identified as the latest.", "small muted"));
+    if (runs.some(r => !r.startedAt.value)) add(root, el("p", "Runs are ordered by recorded date; undated runs follow by ID.", "small muted"));
     const view = el("div"); add(root, view);
     let generation = 0;
     selector.onchange = () => { selected = runs.find(r => r.id === selector.value); void render(); };
@@ -58,7 +60,7 @@ export async function mount(root, phase) {
       const status = el("div", undefined, "run-result");
       add(status, badge(run.verdict), el("span", run.id, "run-id"));
       add(view, status, el("p", `Started: ${valueText(run.startedAt.value)} · Finished: ${valueText(run.finishedAt.value)}`, "small muted"));
-      if (pinned) add(view, el("p", `Pinned run for this page: ${pinned}. This is a viewing preference, not a test result.`, "small"));
+      if (pinned) add(view, el("p", `Pinned run for this page: ${pinned}. This page opens with that run selected.`, "small"));
       const graph = el("div"); add(view, graph);
       let memory = [], sampleIssue = null;
       const memoryRef = run.evidence.find(r => r.path.endsWith("memory-samples.log"));
@@ -72,7 +74,7 @@ export async function mount(root, phase) {
       const timing = run.measurements.filter(m => ["backlogRecoverySeconds", "latencyP95Seconds", "streamEventsPerSecond"].includes(m.id));
       if (timing.length) {
         const strip = el("section", undefined, "timing-strip");
-        add(strip, el("h3", "Time across the whole pipeline"), el("p", "These measurements include backlog and polling time. They are not the time spent in one container.", "small"));
+        add(strip, el("h3", "Time across the whole pipeline"), el("p", "End-to-end measurements for this workload, including backlog recovery and polling time.", "small"));
         for (const m of timing) add(strip, el("p", `${metricNames[m.id]}: ${shown(m.value)} ${m.unit}`), evidenceRefs(m.evidence));
         add(view, strip);
       }
@@ -85,26 +87,26 @@ export async function mount(root, phase) {
       const sourceLinks = add(el("div", undefined, "refs"), ...story.sources.map(path => {
         const a = link(path, `/api/source?path=${encodeURIComponent(path)}`); a.target = "_blank"; a.rel = "noopener"; return a;
       }));
-      add(view, disclosure("Test script and harness code", el("p", "Current checkout, not necessarily the code used for this historical run. The recorded revision is in the run details."), sourceLinks));
+      add(view, disclosure("Test script and harness code", el("p", "Current project files."), sourceLinks));
 
       heading(view, "How the results are checked"); list(view, story.verification);
       heading(view, "Results for the selected run");
       const summary = run.verdict !== "passed" ? `This run ${run.verdict === "failed" ? "failed" : "cannot yet be verified"}. Review the recorded checks and missing evidence below.` :
-        run.expectedOutcome === "expected-failure" ? phase === 3 ? "The verifier detected the intended error. This is a successful check of the test harness, not a successful replication run." : "The expected failure was confirmed. The consumer kept the blocked event and did not allow later changes to pass it. This does not mean the invalid event was repaired." :
-        phase === 4 ? "The recovery checks passed. The final emulator-loss check confirmed that replication stops visibly when broker resources disappear." : "The selected replication checks passed. The result applies to this workload and the supported operations it exercises.";
+        run.expectedOutcome === "expected-failure" ? phase === 3 ? "The verifier detected the deliberately introduced error. The harness self-test passed." : "The expected failure was confirmed. The consumer retained the blocked event and held later changes. Applying that event requires a repair." :
+        phase === 4 ? "The recovery checks passed. The final emulator-loss check confirmed that replication stops visibly when broker resources disappear." : "The selected replication checks passed.";
       add(view, el("p", summary, run.verdict === "passed" ? "result-summary" : "notice"));
       add(view, table(["Check", "Recorded value", "Evidence"], Object.entries(run.counts).map(([id, fact]) => [({expectedEvents: "Expected events", capturedEvents: "Captured unique events", appliedEvents: "Applied events", dlqDeliveries: "DLQ deliveries", uniqueQuarantines: "Unique failures", expectedQuarantines: "Expected failures"})[id], valueText(fact.value), evidenceRefs(fact.evidence)]), "Recorded result counts"));
-      add(view, el("p", "A matching event count or an empty DLQ alone does not prove correct replication. Schema, row, event-identity and failure checks are also required.", "small"));
+      if (phase === 5 && run.expectedOutcome === "expected-failure") add(view, el("p", "Expected and applied counts cover the valid baseline. Captured events can also include the rejected schema change and the later blocked write.", "small"));
       add(view, disclosure("Recorded assertions and raw exit codes", el("p", `Host exit: ${valueText(run.rawExitCodes.host.value)}; harness exit: ${valueText(run.rawExitCodes.harness.value)}; failure code: ${valueText(run.failureCode.value)}.`), table(["Result", "Check", "Evidence"], run.assertions.map(a => [badge(a.status), a.description, evidenceRefs(a.evidence)]), "Recorded assertions")));
       const differences = run.evidence.filter(r => /(?:schema|rows|diffs)\.json$/.test(r.path));
-      add(view, disclosure("Schema and row comparison evidence", differences.length ? evidenceRefs(differences) : el("p", "Comparison files were not recorded.")));
+      if (differences.length) add(view, disclosure("Schema and row comparison evidence", evidenceRefs(differences)));
       if (run.sequence.length) {
         const sequence = add(el("ol", undefined, "sequence"), ...run.sequence.map(s => add(el("li"), el("span", s.label), evidenceRefs(s.evidence))));
-        add(view, disclosure("Recorded action sequence", el("p", "Order only: no per-action timestamps were recorded."), sequence));
+        add(view, disclosure("Recorded action sequence", sequence));
       }
 
       if (run.measurements.length) {
-        heading(view, "Timing and load measurements", "Local POC measurements, not production capacity or a latency guarantee.");
+        heading(view, "Timing and load measurements", "Measurements from this local test run.");
         const rates = run.measurements.filter(m => m.unit === "events/second");
         if (rates.length) add(view, bars("Observed processing rates", rates.map(m => ({label: m.id.startsWith("backlog") ? "Backlog recovery" : "Continuing writes", value: m.value})), "events/second"));
         const samples = run.evidence.find(r => r.path.endsWith("latency-samples-seconds.json"));
@@ -118,16 +120,14 @@ export async function mount(root, phase) {
         add(view, disclosure("All measurement values and definitions", table(["Measurement", "Value", "Definition", "Evidence"], run.measurements.map(m => [metricNames[m.id] ?? m.id, `${shown(m.value)} ${m.unit}`, m.definition, evidenceRefs(m.evidence)]), "Measurement definitions")));
       }
       if (token !== generation) return;
-      if (memory.length) add(view, disclosure("Recorded memory samples", el("p", "Only Maxwell and the Swift consumer are measured. MiB = 1,048,576 bytes. Sampled peaks are not lifetime high-water marks."), table(["Timestamp (UTC)", "Service", "MiB"], memory.map(s => [s.timestamp, s.service, shown(s.value)]), "Memory samples")));
-      heading(view, "What this result does not establish"); add(view, el("p", story.limit));
+      if (memory.length) add(view, disclosure("Recorded memory samples", el("p", "Memory is sampled for Maxwell and the Swift consumer. MiB = 1,048,576 bytes. Each peak is the largest recorded sample."), table(["Timestamp (UTC)", "Service", "MiB"], memory.map(s => [s.timestamp, s.service, shown(s.value)]), "Memory samples")));
       for (const issue of [...run.issues, ...(run.presentation?.issues ?? [])]) add(view, el("p", issue, "notice"));
-      add(view, disclosure("Run details and limitations", el("pre", JSON.stringify({configuration: run.configuration.value, code: run.code.value, versions: run.versions.value, parentSuite: run.relationships.parentSuiteId.value}, null, 2)), ...run.limitations.map(text => el("p", text)), el("p", `Report generated: ${report.generatedAt}. Run make dashboard-data and reload after a new test run.`)));
-      add(view, link("Open detailed evidence and run comparisons", `/evidence?run=${encodeURIComponent(run.id)}`));
+      const settings = Object.fromEntries(Object.entries({configuration: run.configuration.value, versions: run.versions.value}).filter(([, value]) => value != null));
+      if (Object.keys(settings).length) add(view, disclosure("Test settings", el("pre", JSON.stringify(settings, null, 2))));
       const siblings = Object.values(stories), index = siblings.indexOf(story);
       const next = el("nav", undefined, "page-navigation"); next.setAttribute("aria-label", "Presentation sequence");
       add(next, link(index ? `← ${siblings[index - 1].title}` : "← Introduction", index ? siblings[index - 1].path : "/"));
       if (index < siblings.length - 1) add(next, link(`Next: ${siblings[index + 1].title} →`, siblings[index + 1].path));
-      else add(next, link("Return to the POC scope and next step →", "/#next-step"));
       add(view, next); root.dataset.ready = "true";
     }
     await render();

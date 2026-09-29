@@ -1,6 +1,6 @@
 # POC evidence dashboard
 
-Phases 1–2 provide an artifact importer, read-only Observable Framework viewer, and Playwright data/visual checks. Phase 2.5 adds the introduction, separate test-story pages and recorded architecture components. Automatic watching and shareable static export remain Phase 3 in [the dashboard plan](../PLAN/DASHBOARD_PLAN.md).
+Phases 1–2 provide an artifact importer, read-only Observable Framework viewer, and Playwright data/visual checks. Phase 2.5 adds the introduction, separate test-story pages and recorded architecture components. Phase 2.6 simplifies the presentation, adds the harness diagram and rerun commands, and removes the old dashboard. Automatic watching and shareable static export remain Phase 3 in [the dashboard plan](../PLAN/DASHBOARD_PLAN.md).
 
 ## Run
 
@@ -20,27 +20,21 @@ After rerunning any POC phase, run `make dashboard-data` and reload the page. `m
 
 ## Views and interpretation
 
-The presentation starts at `/` with **MySQL Third-Party Replication POC**, a Mermaid architecture diagram that includes the consumer's DLQ branch, the test procedure, and the limits of the POC. Follow the pages in order:
+The presentation starts at `/` with **MySQL Third-Party Replication POC**, a Mermaid architecture diagram including the Swift harness (`e2e` service), its checks and saved artifacts, and the consumer's DLQ branch. The introduction explains Maxwell's change capture, Pub/Sub topics and subscriptions, and the test procedure. Follow the pages in order:
 
 - `/basics`: Phase 3 — basic replication and verifier self-tests.
 - `/recovery`: Phase 4 — interruption, replay, repair and emulator-loss detection.
 - `/failures`: Phase 5 — malformed input, unsupported schema changes and transaction/backlog load, as separate selected runs.
 
-Each page selects only individual runs from its own phase and defaults to the latest recorded start time, including failed attempts. Pins are separate for each page. Suites remain in the detailed evidence browser rather than appearing as one combined experiment. The per-run architecture always includes a DLQ card: an observed zero is **0**, missing evidence is **Not recorded**, and diagnostic deliveries are separate from unique/expected failures.
+Each test page shows runnable commands before its run selector, followed by the manual reporting refresh command. It selects individual runs from its own phase and defaults to the latest recorded start time, including failed attempts. Pins are separate for each page. Suite records remain available in the normalized report; presentation pages show their individual experiments. The per-run architecture always includes a DLQ card: an observed zero is **0**, missing evidence is **Not recorded**, and diagnostic deliveries are separate from unique/expected failures.
 
-Service cards show safe recorded container fields and service-log links where available. Memory appears only for Maxwell and the Swift consumer. Table names come from the event list; `cdc_meta.applied_events` is shown separately from application tables. Timing is labeled as end-to-end, not assigned to a particular container. Procedures, verification methods, results and limitations follow the architecture. Scripts, raw assertions and comparison files are expandable. Code links show the current checkout, not an assertion that it matches the selected run's revision.
+Service cards show safe recorded container fields and service-log links where available. Memory appears only for Maxwell and the Swift consumer. Table names come from the event list; `cdc_meta.applied_events` is shown separately from application tables. Timing is labeled as end-to-end. Procedures, verification methods and results follow the architecture. Scripts, raw assertions, database comparison files and test settings are expandable. Script links are labeled as current project files. Git provenance stays in the normalized report; the presentation omits Git housekeeping, general limitations and repeated coverage summaries. Failed checks and evidence errors remain visible. The presentation ends with the test results, with no next-step section.
 
-The previous technical views remain available at `/evidence`:
+The previous `/evidence` dashboard has been removed, including its overview, scenario, recovery, performance and comparison tabs. Each test page retains its own counts, assertions, comparison files, action sequence, timing charts, memory samples and run details. The `/api/evidence` file endpoint continues to serve those links.
 
-- **Overview:** architecture, selected-run counts, scenario coverage, recorded versions/platform and limitations.
-- **Scenario:** question, action, expected/observed outcome, raw assertion results and evidence.
-- **Recovery:** event/DLQ/quarantine accounting, schema/row/diff drill-downs, and recorded restart/repair order. No invented timestamps.
-- **Performance:** metric definitions/units, processing rates, a histogram of recorded latency samples, sampled memory peaks and timestamped samples. Raw missing/invalid samples remain unavailable. Numeric summaries accompany every chart.
-- **History:** attempts, configuration/code provenance, explicit suite members and side-by-side measurements. Differing or missing workload/version/platform metadata produces warnings; unrecorded host conditions prevent claiming controlled comparability.
+Selection is carried in `?run=...`. With no explicit selection or pinned baseline, the latest **recorded start time** wins, including failed/incomplete runs. Undated legacy attempts follow by ID and cannot honestly be placed chronologically; the UI says so. A browser-local reviewed-baseline pin is a viewing preference, not a changed test verdict. Nothing aggregates suite and child event counts.
 
-Selection is carried in `?run=...` (plus `view=...` in the detailed evidence browser). With no explicit selection or pinned baseline, the latest **recorded start time** wins, including failed/incomplete runs. Undated legacy attempts follow by ID and cannot honestly be placed chronologically; the UI says so. A browser-local reviewed-baseline pin is a viewing preference, not a changed test verdict. Nothing aggregates suite and child event counts.
-
-Evidence links open inert plain text in a separate tab; their labels include JSON pointers, but the full original file is retained (no lossy reserialization of row values). The server requires a path referenced by the current report and rechecks every path component against the artifact root, rejecting traversal and symlinks. File reads are limited to 64 MiB. Container environment dumps are not allowlisted. Raw logs/payloads can still contain test data: local access is not permission to publish them. This server is for localhost, not authenticated multi-user hosting.
+Evidence links open the full original file as inert plain text in a separate tab, preserving exact row values. The server requires a path referenced by the current report and rechecks every path component against the artifact root, rejecting traversal and symlinks. File reads are limited to 64 MiB. Container environment dumps are not allowlisted. Raw logs/payloads can still contain test data: local access is not permission to publish them. This server is for localhost, not authenticated multi-user hosting.
 
 The additive `presentation` field contains whitelisted container name/image/snapshot state/Docker restart count, labeled event categories, and table names. Raw container inspections are private inputs limited to 8 MiB and never exposed by evidence routes. Optional presentation-file errors do not change a recorded replication verdict. The Docker restart counter is not a complete history of injected restarts. Observed payload categories are used where present; expected workload categories are clearly labeled when used as a fallback, and do not establish how many invalid events were received.
 
@@ -117,7 +111,7 @@ Tests cover correct and incorrect expected failures, corrupt/missing evidence, r
 
 `make dashboard-test` runs Chromium in the Playwright 1.63.0 Noble image pinned by digest, at Linux ARM64 (emulated on Intel), with bundled fonts, UTC/en-US, fixed fixture dates, reduced motion and 1440×1000 / 390×844 viewports. Unexpected console/page/network errors fail the gate. Numerical assertions are independent of screenshot comparisons. Browser tests do not replace replication E2E tests.
 
-Sixteen baseline images live under `test/browser/snapshots/`: introduction and three narrative pages, plus the four detailed evidence views, each at desktop and narrow sizes. Review them before committing a visual change. Updating is always explicit:
+Eight baseline images live under `test/browser/snapshots/`: introduction and three test pages, each at desktop and narrow sizes. Browser checks cover the harness diagram, runnable commands before the selectors, removal of the old dashboard, safe evidence links and displayed results. Review the images before committing a visual change. Updating is always explicit:
 
 ```sh
 make dashboard-test-update-snapshots

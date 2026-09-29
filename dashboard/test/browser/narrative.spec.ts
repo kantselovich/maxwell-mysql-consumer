@@ -15,15 +15,43 @@ const dlq = (page: Page) => page.locator('[data-component="dlq"]');
 async function dlqCount(page: Page, label: string, expected: string) {
   await expect(dlq(page).locator(".node-stat").filter({has: page.getByText(label, {exact: true})}).locator("strong")).toHaveText(expected);
 }
-test("introduction explains the experiment and includes the DLQ in Mermaid", async ({page}) => {
+test("introduction explains the experiment and includes harness, evidence and DLQ in Mermaid", async ({page}) => {
   await open(page, "/");
   await expect(page.getByRole("heading", {name: "MySQL Third-Party Replication POC", exact: true})).toBeVisible();
   await expect(page.locator("#architecture-diagram svg")).toBeVisible();
   await expect(page.locator("#architecture-diagram")).toContainText("Pub/Sub dead-letter queue - DLQ");
   await expect(page.locator("#architecture-diagram")).toContainText("Failure diagnostics");
+  // SVG line wrapping splits labels across tspans; compare their joined text.
+  const diagramText = (await page.locator("#architecture-diagram svg").textContent())!.replace(/\s/g, "");
+  for (const label of ["Swift test harness - e2e container", "Writes source / checks target", "Audit events / DLQ diagnostics", "Saves results", "artifacts/"]) expect(diagramText).toContain(label.replace(/\s/g, ""));
+  await expect(page.locator('a[href^="/evidence"]')).toHaveCount(0);
+  await expect(page.getByRole("heading", {name: "How the POC is tested"})).toBeVisible();
+  await expect(page.getByText(/Maxwell's daemon.*is a background process/)).toBeVisible();
+  await expect(page.getByText(/Google Cloud Pub\/Sub.*is a messaging service/)).toBeVisible();
+  await expect(page.getByText(/Publishers send messages to a topic, and subscribers receive them through subscriptions/)).toBeVisible();
+  await expect(page.getByRole("heading", {name: /Next steps?/i})).toHaveCount(0);
+  await expect(page.locator('[id="next-step"], a[href*="next-step"]')).toHaveCount(0);
+  await expect(page.getByRole("heading", {name: "What this POC can establish"})).toHaveCount(0);
   await expect(page.getByText("From source to proof.", {exact: true})).toHaveCount(0);
   await page.locator(".test-chapters").getByRole("link", {name: /Basic replication/}).click();
   await expect(page.getByRole("heading", {name: "Basic replication", exact: true})).toBeVisible();
+});
+test("test pages omit Git housekeeping and repeated coverage while retaining results", async ({page, request}) => {
+  const report = await (await request.get("/api/report")).json();
+  const original = report.runs.find((run: {id: string}) => run.id === "maxwell-e2e-positive");
+  expect(original.code.value.dirty).toBe(true);
+  expect(original.limitations.join(" ")).toContain("uncommitted diff");
+  for (const path of ["/basics?run=maxwell-e2e-positive", "/recovery?run=maxwell-phase4-fixture", "/failures?run=maxwell-phase5-workload-fixture"]) {
+    await open(page, path);
+    // textContent also checks the text inside closed disclosures.
+    const text = await page.locator(".narrative").textContent();
+    expect(text).not.toMatch(/uncommitted diff|dirty worktree|code revision|base commit|1111111111111111111111111111111111111111/i);
+    await expect(page.getByText("Run details and limitations", {exact: true})).toHaveCount(0);
+    await expect(page.getByRole("heading", {name: "Test coverage", exact: true})).toHaveCount(0);
+    await expect(page.locator('a[href*="next-step"]')).toHaveCount(0);
+    await expect(page.getByRole("table", {name: "Recorded result counts"})).toBeVisible();
+    await expect(dlq(page)).toBeVisible();
+  }
 });
 test("latest run is phase-scoped, failed attempts stay visible, and missing DLQ is not zero", async ({page}) => {
   await open(page, "/basics");
@@ -65,8 +93,37 @@ test("recovery and poison runs show nonzero DLQ without conflating deliveries an
   await expect(page.getByText(/final emulator-loss check confirmed/)).toBeVisible();
   await open(page, "/failures?run=maxwell-phase5-malformed-fixture");
   await dlqCount(page, "DLQ deliveries", "1"); await dlqCount(page, "Unique failures", "1");
-  await expect(page.getByText(/does not mean the invalid event was repaired/)).toBeVisible();
+  await expect(page.getByText(/Applying that event requires a repair/)).toBeVisible();
   await expect(page.getByLabel("Test run").locator("option").filter({hasText: "suite"})).toHaveCount(0);
+});
+for (const [path, commands] of [["/basics", ["make e2e", "make e2e-checks"]], ["/recovery", ["make phase4"]], ["/failures", ["bash scripts/phase5.sh malformed", "bash scripts/phase5.sh unsupported", "make e2e-load"]]] as const) {
+  test(`${path} provides rerun commands before run selection`, async ({page}) => {
+    await open(page, path);
+    const block = page.locator(".run-command pre code");
+    for (const command of commands) await expect(block).toContainText(command);
+    expect(await block.evaluate(node => Boolean(node.compareDocumentPosition(document.querySelector('.run-controls')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    await expect(page.locator(".run-command")).toContainText("make dashboard-data");
+    await expect(page.locator('a[href^="/evidence"]')).toHaveCount(0);
+  });
+}
+test("counts and negative-test assertions remain available on the test page", async ({page}) => {
+  await open(page, "/basics?run=maxwell-e2e-positive");
+  const counts = page.getByRole("table", {name: "Recorded result counts"});
+  for (const label of ["Expected events", "Captured unique events", "Applied events"]) await expect(counts.getByRole("row").filter({has: page.getByText(label, {exact: true})}).getByRole("cell").nth(1)).toHaveText("2");
+  await open(page, "/basics?run=maxwell-e2e-negative");
+  await expect(page.locator(".run-result .badge")).toHaveText("passed");
+  await expect(page.getByText(/The verifier detected the deliberately introduced error/)).toBeVisible();
+  await page.getByText("Recorded assertions and raw exit codes", {exact: true}).click();
+  await expect(page.getByText(/Host exit: 0; harness exit: 1; failure code: event-manifest/)).toBeVisible();
+  await expect(page.getByRole("table", {name: "Recorded assertions", exact: true})).toContainText("failed");
+});
+test("missing and corrupt results stay distinct from success", async ({page}) => {
+  for (const [id, verdict] of [["maxwell-e2e-incomplete", "incomplete"], ["maxwell-e2e-corrupt", "unknown"]]) {
+    await open(page, `/basics?run=${id}`);
+    await expect(page.locator(".run-result .badge")).toHaveText(verdict);
+    const row = page.getByRole("table", {name: "Recorded result counts"}).getByRole("row").filter({has: page.getByText("Applied events", {exact: true})});
+    await expect(row.getByRole("cell").nth(1)).toHaveText("Not recorded");
+  }
 });
 test("load memory is only Maxwell and consumer, latency is end-to-end, DLQ is zero", async ({page}) => {
   await open(page, "/failures?run=maxwell-phase5-workload-fixture");

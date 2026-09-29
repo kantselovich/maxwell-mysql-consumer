@@ -6,23 +6,27 @@ title: MySQL Third-Party Replication POC
 
 # MySQL Third-Party Replication POC
 
-Evaluate whether Maxwell, Pub/Sub and a custom Swift consumer can replicate supported schema and data changes from **MySQL 8.4 to MySQL 5.7**, detect failures, and recover without silently skipping changes.
+This POC tests replication from **MySQL 8.4 to MySQL 5.7** using Maxwell, Pub/Sub and a custom Swift consumer. It covers schema and data changes, recovery from service interruptions, and handling of invalid events.
 
 ## Architecture under test
 
-<div id="architecture-diagram" aria-label="POC architecture including the dead-letter queue" role="img"></div>
+<div id="architecture-diagram" aria-label="POC architecture including the test harness and dead-letter queue" role="img"></div>
 
-The databases, Maxwell daemon, Pub/Sub emulator and Swift consumer run in Docker containers. Maxwell reads the source database's binlog and publishes change events. The Swift consumer reads those events and applies supported changes to the target database.
+**Maxwell's daemon** is a background process that reads MySQL's binary log, the database's record of changes. It converts those changes into JSON events and publishes them to Pub/Sub.
 
-The consumer keeps applied-event records, checkpoints and recovery information in the target's `cdc_meta` schema. Replicated application tables are separate from those records.
+**Google Cloud Pub/Sub** is a messaging service. Publishers send messages to a topic, and subscribers receive them through subscriptions. This POC uses its local emulator to carry events from Maxwell to the Swift consumer. A separate audit subscription lets the harness check the same event stream.
 
-**Dead-letter queue (DLQ):** when an event cannot be applied, the consumer keeps the blocked event and publishes a diagnostic to a separate Pub/Sub topic. Later changes must not pass the blocked event. Each test page shows its recorded DLQ delivery count, including **0** when no deliveries were observed. Missing evidence is shown as **Not recorded**, not zero.
+**The Swift consumer** applies schema and data changes to the target database, one event at a time. It tracks applied events and recovery state in the target's `cdc_meta` schema.
+
+**Dead-letter queue (DLQ):** when an event cannot be applied, the consumer holds it for repair, pauses later changes and publishes a diagnostic to a separate Pub/Sub topic. Each test page shows the observed DLQ delivery count, including **0**.
 
 ## How the POC is tested
 
-The test scripts start isolated Docker Compose stacks. The Swift harness creates schemas and writes data on the source, observes the change stream and DLQ, and checks the target against the expected events, schemas and rows. Recovery tests also stop services and introduce errors.
+The databases, Maxwell, Pub/Sub emulator, consumer and harness run in an isolated Docker Compose stack. The Swift harness runs in the `e2e` service. It creates schemas and writes data on the source, then compares both databases with the planned schemas, rows and events.
 
-The harness saves results, database comparisons and logs under `artifacts/`. This dashboard reads those files; it does not need the original test containers to remain running. Container information is a recorded snapshot, not live monitoring.
+For recovery tests, the host scripts interrupt services between harness checks. Invalid-input tests check that the consumer retains the failed event and its diagnostic while later changes wait. Load tests also measure processing time and memory use for Maxwell and the consumer.
+
+Results, database comparisons and logs are saved under `artifacts/`. This dashboard displays those records, with a run selector and rerun commands on each test page.
 
 ## Read the results in this order
 
@@ -31,18 +35,6 @@ The harness saves results, database comparisons and logs under `artifacts/`. Thi
 <a href="/recovery"><span>2 · Phase 4</span><strong>Recovery</strong><p>What happens when services stop, events are replayed, or target errors need repair?</p></a>
 <a href="/failures"><span>3 · Phase 5</span><strong>Failure handling and load</strong><p>Does invalid input block safely? Do committed changes arrive while a backlog drains?</p></a>
 </div>
-
-Each page explains the procedure, shows one selected run, and links each result to its evidence. A passed negative test means the intended failure was detected; it does not mean the rejected event was applied or repaired. Memory is measured only for Maxwell and the Swift consumer.
-
-## What this POC can establish
-
-The tests provide evidence for the supported schema and event-handling contract in a local environment. They do not establish production readiness, support for every MySQL operation, initial copying of an existing database, or atomic visibility of a whole source transaction on the target. The emulator is not a durable production broker.
-
-<h2 id="next-step">Decision supported by the evidence</h2>
-
-Use the individual test results to decide whether to approve a bounded, non-production trial against real Pub/Sub and the intended database versions. Before a production decision, validate secure connectivity, ordering and redelivery, required schema coverage, recovery procedures, and representative load. Local memory and timing measurements are not production capacity guarantees.
-
-[Open detailed evidence, supporting Phase 1–2 runs and suite reports](/evidence)
 
 </div>
 

@@ -28,6 +28,8 @@ export function viewer(options: { artifacts: string; report: string; site: strin
     if (req.method !== "GET" && req.method !== "HEAD") { res.writeHead(405).end(); return; }
     try {
       const url = new URL(req.url!, "http://localhost");
+      // Retired presentation route, including any stale output from an older build.
+      if (["/evidence", "/evidence.html", "/evidence/"].includes(decodeURIComponent(url.pathname))) { res.writeHead(404).end("Page removed"); return; }
       let data: Buffer | string, type: string;
       if (url.pathname === "/api/report" || url.pathname === "/api/evidence" || url.pathname === "/api/service-log") {
         const report: Report = JSON.parse(await readFile(options.report, "utf8"));

@@ -58,9 +58,20 @@ Implemented and approved for a checkpoint on 2026-09-28. See [Phase 2.5 results]
 - Present basic replication, recovery, and failure handling/load on separate pages, each with phase-scoped run selection.
 - Show recorded container details, log links, event counts, target tables and DLQ counts in a reusable architecture component. Display recorded zero DLQ deliveries as `0`; distinguish missing evidence.
 - Show memory only for Maxwell and the Swift consumer, and label timing as end-to-end.
-- Explain each test's procedure, verification, results and limitations; retain the detailed evidence browser.
+- Explain each test's procedure, verification, results and coverage, with expandable supporting evidence on each test page.
 
 **Exit gate:** Importer and Playwright checks pass, including reviewed desktop/narrow visual baselines and checks against retained real runs. Further styling and wording corrections can follow this checkpoint. Automatic refresh and export remain Phase 3.
+
+## Phase 2.6 — Simplify the presentation
+
+Reviewed and approved for a checkpoint. See [presentation corrections and verification](DASHBOARD_PRESENTATION_RESULTS.md).
+
+- Include the `e2e` harness in the overview diagram and runnable commands above each test's selector.
+- Explain Maxwell and Pub/Sub in plain language; keep the presentation focused on test procedures and results.
+- Remove the old `/evidence` dashboard, next-step section, repeated coverage summaries and Git housekeeping from the pages.
+- Retain supporting-file links, assertions, failure notices, test settings and explicit DLQ counts on the four presentation pages.
+
+**Exit gate:** Type checking, 31 Node tests and 34 Playwright checks pass, including eight desktop/narrow screenshot baselines.
 
 ## Phase 3 — Refresh after reruns and publish snapshots
 

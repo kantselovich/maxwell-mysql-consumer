@@ -17,7 +17,7 @@ for (const [index, fixture] of fixtures.entries()) {
     // Give fixture attempts deterministic provenance. The startup failure is newest.
     const hour = fixture.directory === "maxwell-e2e-startup" ? 23 : index;
     const stamp = `2026-09-28T${String(hour).padStart(2, "0")}:00:00Z`;
-    await writeFile(join(dir, "run-metadata.json"), JSON.stringify({schemaVersion: 1, runId: fixture.directory, phase: fixture.expected.phase, kind: "run", state: "finished", startedAt: stamp, finishedAt: stamp, code: {commit: "1111111111111111111111111111111111111111", dirty: false}, parentSuiteId: null, gateId: null}));
+    await writeFile(join(dir, "run-metadata.json"), JSON.stringify({schemaVersion: 1, runId: fixture.directory, phase: fixture.expected.phase, kind: "run", state: "finished", startedAt: stamp, finishedAt: stamp, code: {commit: "1111111111111111111111111111111111111111", dirty: fixture.directory === "maxwell-e2e-positive"}, parentSuiteId: null, gateId: null}));
   }
 }
 const workload = join(artifacts, "maxwell-phase5-workload-fixture");
