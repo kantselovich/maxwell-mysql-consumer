@@ -20,12 +20,25 @@ services:
       BIND_HOST: 0.0.0.0
       ARTIFACT_ROOT: /artifacts
       REPORT_PATH: /reports/report.json
+      WATCH_STATUS_PATH: /reports/watch-status.json
     ports:
       - "127.0.0.1:4173:4173"
     volumes:
       - ./artifacts:/artifacts:ro
       - ./dashboard/.generated:/reports:ro
+  watcher:
+    image: maxwell-poc-dashboard:phase2
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    command: ["node", "reporting/watch.ts", "/artifacts", "/output/report.json", "/output/watch-status.json"]
+    init: true
+    network_mode: none
+    volumes:
+      - ./artifacts:/artifacts:ro
+      - ./dashboard/.generated:/output
   browser-tests:
+    image: maxwell-poc-dashboard-browser-tests:latest
     build:
       context: .
       dockerfile: dashboard/Dockerfile.playwright
@@ -36,3 +49,14 @@ services:
       - ./dashboard/test/browser:/workspace/dashboard/test/browser
       - ./dashboard/test-results:/workspace/dashboard/test-results
       - ./dashboard/playwright-report:/workspace/dashboard/playwright-report
+  live-browser:
+    image: maxwell-poc-dashboard-browser-tests:latest
+    profiles: ["test"]
+    platform: linux/arm64
+    shm_size: 1gb
+    entrypoint: ["node"]
+    command: ["test/live.ts"]
+    environment:
+      DASHBOARD_URL: http://viewer:4173
+    volumes:
+      - ./artifacts:/artifacts:ro

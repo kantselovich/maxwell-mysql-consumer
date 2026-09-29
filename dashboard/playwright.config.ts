@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "test/browser",
   testMatch: "*.spec.ts",
   fullyParallel: true,
-  workers: 2,
+  workers: 1, // Keep browser peak memory low alongside retained POC stacks.
   retries: 0,
   updateSnapshots: "none", // Missing baselines fail too; only the explicit CLI update may write them.
   timeout: 30_000,

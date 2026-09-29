@@ -1,6 +1,6 @@
 export type Verdict = "passed" | "failed" | "incomplete" | "unknown";
 export type ExpectedOutcome = "capture-only" | "replication-success" | "expected-failure" | "recovery" | "suite" | "unknown";
-export interface EvidenceRef { path: string; pointer: string; access: "local-only" }
+export interface EvidenceRef { path: string; pointer: string; access: "local-only" | "snapshot"; label?: string }
 export interface Fact<T> { value: T | null; evidence: EvidenceRef[] }
 export interface Assertion {
   id: string; status: Verdict; description: string; evidence: EvidenceRef[];
@@ -13,6 +13,7 @@ export interface Scenario {
   id: string; title: string; question: string; action: string; expected: string; evidence: string[];
 }
 export interface Run {
+  evidenceRevision?: string;
   presentation?: import("./presentation.ts").Presentation;
   schemaVersion: 1;
   id: string;

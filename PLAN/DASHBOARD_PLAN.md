@@ -75,6 +75,8 @@ Reviewed and approved for a checkpoint. See [presentation corrections and verifi
 
 ## Phase 3 — Refresh after reruns and publish snapshots
 
+Completed and verified with `make dashboard`, `make dashboard-build`, and `make dashboard-test-live`. The full Basic replication command passed with Chromium observing changing counts during execution and all three final results. See [Phase 3 results](DASHBOARD_PHASE_3_RESULTS.md) for the run IDs, browser evidence and regression checks.
+
 - Add `make dashboard` to start the local dashboard and artifact watcher, plus a manual `make dashboard-data` refresh command.
 - Keep existing test commands unchanged: `make phase2`, `make phase4`, `make phase5`, `make e2e SCENARIO=crud`, and `make e2e-load` produce results that the watcher discovers automatically.
 - Debounce file changes and publish normalized data atomically. Show an unfinished run as in-progress only when supported by run metadata; interrupted or legacy partial runs must not remain falsely successful or indefinitely marked running.
@@ -83,7 +85,7 @@ Reviewed and approved for a checkpoint. See [presentation corrections and verifi
 - Add `make dashboard-build` for a static snapshot with its selected run IDs, generation time and safe supporting evidence. Omit sensitive/raw files by default and label local-only evidence links rather than publishing broken links.
 - Keep dashboard/import failures separate from test outcomes: a reporting error must not change a replication test's exit status or overwrite its evidence.
 
-**Exit gate:** Playwright observes new fixture runs through the real importer/watcher without manual page reload, covering passing, validated negative and failed/interrupted outcomes. Also rerun one actual POC scenario and use Playwright to verify its new run ID and expected results in the dashboard. A built snapshot passes browser tests without the original test containers and contains no unintended credentials or local-only paths.
+**Exit gate:** Playwright observes new fixture runs through the real importer/watcher without manual page reload, covering passing, validated negative and failed/interrupted outcomes. Run the exact Basic replication page command (`make e2e-checks WRITE_INTERVAL_MS=250`) with Chromium already open. Verify changing counts during the smoke workload, all three final run IDs and their expected results, without page reload. A built snapshot passes browser tests without the original test containers and contains no unintended credentials or local-only paths.
 
 ## Playwright testing
 
@@ -104,10 +106,10 @@ make e2e-load                   # Generate fresh performance evidence
 make dashboard-data            # Explicitly regenerate the reporting data
 make dashboard-build           # Build a shareable static snapshot
 make dashboard-test            # Playwright: data, visuals, interactions, refresh and static report
-make dashboard-test-live SCENARIO=crud # Fresh POC run + browser verification of its new results
+make dashboard-test-live       # Full basic suite + live browser verification
 make dashboard-test-update-snapshots  # Explicit visual baseline update; review the diffs
 ```
 
-`make dashboard-data`, `make dashboard-data-test`, `make dashboard-test` and the explicit snapshot-update command are implemented. Phase 2 adds `make dashboard-view` / `make dashboard-stop` for the manual-refresh viewer. Watcher, static export, automatic-refresh browser coverage and fresh-run integration remain Phase 3.
+The commands above are implemented. `make dashboard-view` also remains available for starting the viewer alone; `make dashboard-stop` stops the viewer and watcher. Database/SQL captures remain local in the default static export.
 
-Follow-up scope: live progress during individual tests, timestamped fault/recovery event streams, richer backlog time-series sampling, artifact retention/archive policies, and CI-hosted reports. The initial delivery focuses on trustworthy completed-run presentation and automatic refresh after reruns.
+The basic suite updates saved event counts during execution and publishes final verdicts after host completion. Follow-up scope: timestamped fault/recovery event streams, richer backlog time-series sampling, artifact retention/archive policies, and CI-hosted reports.

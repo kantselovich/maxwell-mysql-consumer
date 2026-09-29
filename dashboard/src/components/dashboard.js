@@ -3,6 +3,7 @@ import {orderedRuns, shown, memorySamples, latencyBins} from "./data.js";
 import {architecture, evidence, link, valueText} from "./architecture.js";
 import {stories, metricNames} from "./stories.js";
 import {databaseView} from "./database.js";
+import {snapshot, reportURL, evidenceURL} from "./report-source.js";
 
 export function navigation(current) {
   const nav = el("nav", undefined, "story-nav"); nav.setAttribute("aria-label", "POC pages");
@@ -19,41 +20,62 @@ export async function mount(root, phase) {
   root.className = "dashboard narrative";
   const story = stories[phase];
   add(root, navigation(story.path), el("p", `MYSQL THIRD-PARTY REPLICATION POC · PHASE ${phase}`, "eyebrow"), el("h1", story.title), el("p", story.question, "lead"), el("p", story.summary));
-  const command = add(el("section", undefined, "run-command"), el("h2", "Run this test"), el("p", story.commandDescription), add(el("pre"), el("code", story.command)), el("p", "Then run make dashboard-data and reload this page to select the new results.", "small"));
-  command.setAttribute("aria-label", "Run this test"); add(root, command);
+  const command = add(el("section", undefined, "run-command"), el("h2", "Run this test"), el("p", story.commandDescription), add(el("pre"), el("code", story.command)), el("p", "With make dashboard running, new results appear automatically. Use make dashboard-data for a manual refresh.", "small"));
+  command.setAttribute("aria-label", "Run this test"); if (!snapshot) add(root, command);
   try {
-    const response = await fetch("/api/report");
+    const response = await fetch(reportURL, {cache:"no-store"});
     if (!response.ok) throw new Error("The report is not available. Run make dashboard-data and reload this page.");
-    const report = await response.json();
-    const runs = orderedRuns(report.runs.filter(r => r.phase === phase && r.kind === "run"));
+    let report = await response.json();
+    let runs = orderedRuns(report.runs.filter(r => r.phase === phase && r.kind === "run"));
     if (!runs.length) {
       add(root, el("p", "No individual runs have been recorded for this test."), add(el("article", undefined, "dlq-card"), el("h2", "Dead-letter queue (DLQ)"), el("p", "DLQ deliveries: Not recorded")));
-      root.dataset.ready = "true"; return;
+      // Keep polling on a new workspace so the first run appears automatically.
+      root.dataset.ready = "true";
+      if (!snapshot) setTimeout(async () => {
+        if (!root.isConnected) return;
+        root.replaceChildren(); await mount(root, phase);
+      }, 2000);
+      return;
     }
     const requested = new URLSearchParams(location.search).get("run");
-    let pinned; try { pinned = localStorage.getItem(`baseline-phase-${phase}`); } catch { /* optional storage */ }
+    let pinned; try { if (!snapshot) pinned = localStorage.getItem(`baseline-phase-${phase}`); } catch { /* optional storage */ }
     let selected = runs.find(r => r.id === requested) ?? runs.find(r => r.id === pinned) ?? runs[0];
     const controls = el("div", undefined, "run-controls");
     const label = el("label", "Test run"), selector = el("select"); selector.setAttribute("aria-label", "Test run");
-    for (const run of runs) { const option = el("option", `${run.id} · ${run.verdict}`); option.value = run.id; add(selector, option); }
+    function options() {
+      selector.replaceChildren();
+      for (const run of runs) { const option = el("option", `${run.id} · ${run.verdict}`); option.value = run.id; add(selector, option); }
+    }
+    options();
     add(controls, add(label, selector));
     const pin = el("button", "Pin this run"), latest = el("button", "Latest dated attempt");
     latest.disabled = !Number.isFinite(Date.parse(runs[0].startedAt.value));
-    add(controls, pin, latest); add(root, controls);
+    const followLabel = el("label", undefined, "follow-control"), follow = el("input"); follow.type = "checkbox";
+    follow.checked = !requested && !pinned; add(followLabel, follow, document.createTextNode("Follow latest"));
+    if (!snapshot) add(controls, pin, latest, followLabel);
+    add(root, controls);
+    const freshness = el("p", undefined, "small report-freshness"); freshness.setAttribute("role", "status"); add(root, freshness);
+    const freshnessText = status => snapshot ? `Snapshot generated ${snapshot.generatedAt}. Selected runs: ${snapshot.runIds.join(", ")}.` :
+      `${status?.error ?? (status?.mode === "watching" ? "Automatic refresh active." : status?.mode === "paused" ? "Automatic refresh paused." : "Manual data refresh.")} Results published ${report.generatedAt}.`;
+    freshness.textContent = freshnessText();
+    if (snapshot) add(root, el("p", "This snapshot includes recorded checks and numeric measurements. Detailed database captures and logs remain with the local run.", "small"));
     if (requested && !runs.some(r => r.id === requested)) add(root, el("p", "The requested run is not an individual run for this page. Showing the page's default selection.", "notice"));
     if (runs.some(r => !r.startedAt.value)) add(root, el("p", "Runs are ordered by recorded date; undated runs follow by ID.", "small muted"));
     const view = el("div"); add(root, view);
-    let generation = 0;
-    selector.onchange = () => { selected = runs.find(r => r.id === selector.value); void render(); };
-    latest.onclick = () => { selected = runs[0]; void render(); };
+    let generation = 0, selectedAvailable = true;
+    selector.onchange = () => { follow.checked = false; selected = runs.find(r => r.id === selector.value); void render(); };
+    latest.onclick = () => { follow.checked = true; selected = runs[0]; void render(); };
+    follow.onchange = () => { if (follow.checked && runs.length) { selected = runs[0]; void render(); } };
     pin.onclick = () => {
       pinned = pinned === selected.id ? null : selected.id;
+      if (pinned) follow.checked = false;
       try { if (pinned) localStorage.setItem(`baseline-phase-${phase}`, pinned); else localStorage.removeItem(`baseline-phase-${phase}`); } catch { /* optional storage */ }
       void render();
     };
 
     async function render() {
       const token = ++generation, run = selected;
+      selectedAvailable = true; pin.disabled = false;
       root.dataset.ready = "false";
       selector.value = run.id; pin.textContent = pinned === run.id ? "Unpin this run" : "Pin this run";
       const url = new URL(location.href); url.searchParams.set("run", run.id); history.replaceState(null, "", url);
@@ -66,7 +88,7 @@ export async function mount(root, phase) {
       let memory = [], sampleIssue = null;
       const memoryRef = run.evidence.find(r => r.path.endsWith("memory-samples.log"));
       if (memoryRef) {
-        try { const response = await fetch(`/api/evidence?path=${encodeURIComponent(memoryRef.path)}`); if (!response.ok) throw new Error(); memory = memorySamples(await response.text()); }
+        try { const response = await fetch(evidenceURL(memoryRef)); if (!response.ok) throw new Error(); memory = memorySamples(await response.text()); }
         catch { sampleIssue = "Memory samples could not be read. Memory values are shown as not recorded."; }
       }
       if (token !== generation) return;
@@ -93,7 +115,7 @@ export async function mount(root, phase) {
       const sourceLinks = add(el("div", undefined, "refs"), ...story.sources.map(path => {
         const a = link(path, `/api/source?path=${encodeURIComponent(path)}`); a.target = "_blank"; a.rel = "noopener"; return a;
       }));
-      add(view, disclosure("Test script and harness code", el("p", "Current project files."), sourceLinks));
+      if (!snapshot) add(view, disclosure("Test script and harness code", el("p", "Current project files."), sourceLinks));
 
       heading(view, "How the results are checked"); list(view, story.verification);
       heading(view, "Results for the selected run");
@@ -118,7 +140,7 @@ export async function mount(root, phase) {
         const samples = run.evidence.find(r => r.path.endsWith("latency-samples-seconds.json"));
         if (samples) {
           try {
-            const response = await fetch(`/api/evidence?path=${encodeURIComponent(samples.path)}`); if (!response.ok) throw new Error();
+            const response = await fetch(evidenceURL(samples)); if (!response.ok) throw new Error();
             const values = await response.json(); if (token !== generation) return;
             add(view, bars("End-to-end latency distribution", latencyBins(values), "samples"), el("p", `${values.length} recorded samples; ranges are seconds. The final range includes its upper boundary.`, "small"), evidence(samples));
           } catch { if (token === generation) add(view, el("p", "Latency samples could not be read.", "notice")); }
@@ -137,5 +159,31 @@ export async function mount(root, phase) {
       add(view, next); root.dataset.ready = "true";
     }
     await render();
+    async function refresh() {
+      if (!root.isConnected) return;
+      try {
+        const [data, status] = await Promise.all([fetch(reportURL, {cache:"no-store"}), fetch("/api/status", {cache:"no-store"})]);
+        if (!data.ok || !status.ok) throw new Error();
+        const updated = await data.json(), state = await status.json();
+        if (updated.generatedAt !== report.generatedAt) {
+          const previous = selected;
+          report = updated; runs = orderedRuns(report.runs.filter(r => r.phase === phase && r.kind === "run")); options();
+          latest.disabled = !runs.length || !Number.isFinite(Date.parse(runs[0].startedAt.value));
+          follow.disabled = !runs.length;
+          selected = follow.checked ? runs[0] : runs.find(r => r.id === previous.id);
+          if (selected) {
+            selector.value = selected.id;
+            if (!selectedAvailable || JSON.stringify(previous) !== JSON.stringify(selected)) await render();
+          } else {
+            selectedAvailable = false; pin.disabled = true;
+            const absent = el("option", `${previous.id} · unavailable`); absent.value = previous.id; absent.disabled = true; add(selector, absent); selector.value = previous.id;
+            selected = previous; ++generation; view.replaceChildren(el("p", "The selected run is no longer available. Choose another run.", "notice")); root.dataset.ready = "true";
+          }
+        }
+        freshness.textContent = freshnessText(state);
+      } catch { freshness.textContent = "Dashboard refresh unavailable. Showing the last loaded results."; }
+      if (root.isConnected) setTimeout(() => void refresh(), 2000);
+    }
+    if (!snapshot) setTimeout(() => void refresh(), 2000);
   } catch (error) { add(root, el("p", error.message, "notice")); }
 }

@@ -96,7 +96,7 @@ test("recovery and poison runs show nonzero DLQ without conflating deliveries an
   await expect(page.getByText(/Applying that event requires a repair/)).toBeVisible();
   await expect(page.getByLabel("Test run").locator("option").filter({hasText: "suite"})).toHaveCount(0);
 });
-for (const [path, commands] of [["/basics", ["make e2e", "make e2e-checks"]], ["/recovery", ["make phase4"]], ["/failures", ["bash scripts/phase5.sh malformed", "bash scripts/phase5.sh unsupported", "make e2e-load"]]] as const) {
+for (const [path, commands] of [["/basics", ["make e2e-checks WRITE_INTERVAL_MS=250"]], ["/recovery", ["make phase4"]], ["/failures", ["bash scripts/phase5.sh malformed", "bash scripts/phase5.sh unsupported", "make e2e-load"]]] as const) {
   test(`${path} provides rerun commands before run selection`, async ({page}) => {
     await open(page, path);
     const block = page.locator(".run-command pre code");

@@ -20,7 +20,7 @@ export async function safeFile(root: string, name: string): Promise<string> {
   return path;
 }
 
-export function viewer(options: { artifacts: string; report: string; site: string; repository?: string }) {
+export function viewer(options: { artifacts: string; report: string; site: string; repository?: string; watchStatus?: string }) {
   return createServer(async (req, res) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Cache-Control", "no-store");
@@ -31,7 +31,17 @@ export function viewer(options: { artifacts: string; report: string; site: strin
       // Retired presentation route, including any stale output from an older build.
       if (["/evidence", "/evidence.html", "/evidence/"].includes(decodeURIComponent(url.pathname))) { res.writeHead(404).end("Page removed"); return; }
       let data: Buffer | string, type: string;
-      if (url.pathname === "/api/report" || url.pathname === "/api/evidence" || url.pathname === "/api/service-log") {
+      if (url.pathname === "/api/status") {
+        let status: Record<string, unknown> = {mode:"manual"};
+        if (options.watchStatus) {
+          try {
+            const saved = JSON.parse(await readFile(options.watchStatus, "utf8"));
+            const fresh = Number.isFinite(Date.parse(saved.heartbeat)) && Date.now() - Date.parse(saved.heartbeat) < 15_000;
+            status = {mode:saved.watching && fresh ? "watching" : "paused", lastSuccess:saved.lastSuccess, error:saved.error ? "Reporting refresh failed. Showing the last published results." : null};
+          } catch { /* manual mode until the first watcher publication */ }
+        }
+        data = JSON.stringify(status); type = "application/json";
+      } else if (url.pathname === "/api/report" || url.pathname === "/api/evidence" || url.pathname === "/api/service-log") {
         const report: Report = JSON.parse(await readFile(options.report, "utf8"));
         if (report.schemaVersion !== 1) throw new Error("Unsupported report");
         if (url.pathname === "/api/report") {
@@ -71,7 +81,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const server = viewer({
     artifacts: resolve(process.env.ARTIFACT_ROOT ?? "../artifacts"),
     report: resolve(process.env.REPORT_PATH ?? ".generated/report.json"),
-    site: resolve(".generated/site"), repository: resolve("..")
+    site: resolve(".generated/site"), repository: resolve(".."), watchStatus: process.env.WATCH_STATUS_PATH
   });
   const port = Number(process.env.PORT ?? 4173);
   server.listen(port, process.env.BIND_HOST ?? "127.0.0.1", () => console.log(`Dashboard: http://localhost:${port} (manual refresh)`));

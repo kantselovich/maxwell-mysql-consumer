@@ -2,8 +2,8 @@ export const stories = {
   3: {
     path: "/basics", title: "Basic replication", question: "Do schema and data changes arrive correctly in MySQL 5.7?",
     summary: "The harness creates a schema on the source, writes data, and checks that the target contains the expected schema and rows.",
-    command: "make e2e\n# Verifier checks: smoke test, missing event, wrong value\nmake e2e-checks",
-    commandDescription: "Run from the repository root. The default smoke workload covers appends, updates, deletes and schema changes. Each command saves a new result under artifacts/.",
+    command: "make e2e-checks WRITE_INTERVAL_MS=250",
+    commandDescription: "Run from the repository root. This runs append, update, delete and schema-change checks, then two verifier self-tests. Writes are paced at 250 ms so you can follow the results as they arrive. Each run saves its evidence under artifacts/.",
     steps: ["Start a fresh Docker Compose stack and confirm that a source-only table and marker reach the target.", "Run the selected workload: insert rows, update and delete rows, or add a column while writes continue.", "Wait for a final marker, then compare the planned events, captured events, target records, schemas and rows.", "In the verifier self-tests, deliberately omit changes or alter a target value. The harness must identify that exact error."],
     verification: ["Compare the event sequence and values with a plan generated before writing to the source.", "Compare expected schemas and rows with both databases, then check the target's applied-event records and checkpoint.", "For a normal replication run, require no pending schema changes and zero DLQ deliveries. For a self-test, require the specific expected failure."],
     sources: ["scripts/e2e.sh", "Sources/E2EHarness/ScenarioHarness.swift"]

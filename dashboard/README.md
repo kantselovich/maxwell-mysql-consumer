@@ -1,6 +1,6 @@
 # POC evidence dashboard
 
-Phases 1–2 provide an artifact importer, read-only Observable Framework viewer, and Playwright data/visual checks. Phase 2.5 adds the introduction, separate test-story pages and recorded architecture components. Phase 2.6 simplifies the presentation, adds the harness diagram and rerun commands, and removes the old dashboard. Automatic watching and shareable static export remain Phase 3 in [the dashboard plan](../PLAN/DASHBOARD_PLAN.md).
+Phases 1–2 provide an artifact importer, read-only Observable Framework viewer, and Playwright data/visual checks. Presentation updates add the introduction, separate test pages, recorded architecture and saved database views. Phase 3 adds automatic refresh and static snapshots; see [the dashboard plan](../PLAN/DASHBOARD_PLAN.md).
 
 ## Run
 
@@ -10,13 +10,43 @@ From the repository root, with Docker/Compose:
 make dashboard-data       # Type-check/test the reporting image, then import artifacts
 make dashboard-data-test  # Run the importer/host-metadata fixture suite in its container
 make dashboard-view       # Import current artifacts and start http://localhost:4173
-make dashboard-stop       # Stop only the dashboard viewer
+make dashboard            # Start viewer + artifact watcher
+make dashboard-build      # Export latest individual run per test page
+make dashboard-stop       # Stop dashboard viewer + watcher; leave test stacks alone
 make dashboard-test       # Isolated Chromium fixture/data/visual gate
+make dashboard-test-live  # Full basic suite with Chromium open throughout
 ```
 
 Output: `dashboard/.generated/report.json`, ignored by Git. The standalone Compose file starts no replication services, mounts `artifacts/` read-only, and disables runtime networking for reporting and fixture browser tests. The viewer publishes only `127.0.0.1:4173`. Node is pinned to 24.13.0 and an image digest; npm development dependencies are locked. It does not mount a Docker socket or inspect live databases. The build needs package-registry access; the built viewer needs no external browser requests or fonts. A patched esbuild override avoids the upstream build dependency's Windows development-server advisory.
 
-After rerunning any POC phase, run `make dashboard-data` and reload the page. `make dashboard-view` is the manual-refresh Phase 2 command; the planned `make dashboard` watcher and `make dashboard-build` export are not implemented yet.
+With `make dashboard` running, existing POC commands produce results that appear automatically. The watcher polls artifact metadata once per second, debounces changes, and imports at least every five seconds during continuing writes. Reports are published by atomic rename. The browser polls every two seconds, and a run's evidence revision invalidates its displayed data when supporting files change. No Observable data-loader cache is involved.
+
+The Basic replication page shows `make e2e-checks WRITE_INTERVAL_MS=250`. This runs the full smoke workload followed by the missing-event and wrong-value verifier checks, each in a fresh stack. The pacing makes incoming counts easier to follow. Keep **Follow latest** enabled to see new runs and their evidence as it arrives. Final verdicts appear after host checks and cleanup complete.
+
+The page displays reporting freshness and watcher status. **Follow latest** selects newly dated attempts, including failures. Selecting a historical run or pinning it turns following off; its selection remains unchanged as other runs arrive. The latest button or checkbox resumes following. Start-only and interrupted attempts retain incomplete/unknown/failed evidence verdicts until terminal evidence establishes an outcome. Reporting errors preserve the last published report and appear separately from replication verdicts. A stopped or stale watcher is shown as paused.
+
+`make dashboard-data` remains an explicit refresh command. An open page discovers the new report automatically. `make dashboard-view` starts the viewer; it leaves an already-running watcher active. `make dashboard-stop` stops both tooling services.
+
+## Static snapshots
+
+```sh
+make dashboard-build
+# Or choose the exact individual runs for a presentation:
+make dashboard-build RUN_IDS=maxwell-e2e-123-456,maxwell-phase4-123-456
+```
+
+Replace the example IDs with actual run IDs. The default selects the latest dated individual attempt from each of phases 3, 4 and 5, including failures. Each export creates a new directory under `dashboard/.generated/snapshots/`; the command prints its path. `snapshot.json` records the selected IDs, generation time and evidence policy.
+
+The export includes the four presentation pages, local assets, selected verdicts, counts, assertions, measurements, exported check summaries and sanitized numeric memory/latency samples. Configurations, image/container names, Git metadata, table names, SQL plans, database rows, logs and raw diagnostics remain local. References to them display **Local evidence** as text. Included supporting files have working static links. Review the selected IDs and report before sharing.
+
+Serve the generated directory at the root of any static HTTP host. From `dashboard/`, a local preview is:
+
+```sh
+node viewer/static.ts .generated/snapshots/<printed-directory-name>
+# http://localhost:4175
+```
+
+The snapshot runs entirely from its own files, with no artifact directory, database, Docker socket or API server. Page links use `.html` paths. Browser fixture tests remove the source artifacts before checking the exported report.
 
 ## Views and interpretation
 
@@ -26,7 +56,7 @@ The presentation starts at `/` with **MySQL Third-Party Replication POC**, a Mer
 - `/recovery`: Phase 4 — interruption, replay, repair and emulator-loss detection.
 - `/failures`: Phase 5 — malformed input, unsupported schema changes and transaction/backlog load, as separate selected runs.
 
-Each test page shows runnable commands before its run selector, followed by the manual reporting refresh command. It selects individual runs from its own phase and defaults to the latest recorded start time, including failed attempts. Pins are separate for each page. Suite records remain available in the normalized report; presentation pages show their individual experiments. The per-run architecture always includes a DLQ card: an observed zero is **0**, missing evidence is **Not recorded**, and diagnostic deliveries are separate from unique/expected failures.
+Each local test page shows runnable commands before its run selector. It selects individual runs from its own phase and defaults to the latest recorded start time, including failed attempts. Pins are separate for each page. Suite records remain available in the normalized report; presentation pages show their individual experiments. The per-run architecture always includes a DLQ card: an observed zero is **0**, missing evidence is **Not recorded**, and diagnostic deliveries are separate from unique/expected failures.
 
 Service cards show safe recorded container fields and service-log links where available. Memory appears only for Maxwell and the Swift consumer. Table names come from the event list; `cdc_meta.applied_events` is shown separately from application tables. Timing is labeled as end-to-end. Procedures, verification methods and results follow the architecture. Scripts, raw assertions, database comparison files and test settings are expandable. Script links are labeled as current project files. Git provenance stays in the normalized report; the presentation omits Git housekeeping, general limitations and repeated coverage summaries. Failed checks and evidence errors remain visible. The presentation ends with the test results, with no next-step section.
 
@@ -83,7 +113,7 @@ Each run contains:
 - Raw host/harness exit codes, timestamps, base Git commit/dirty flag, workload configuration and available database/image versions.
 - Explicit parent suite/gate IDs and child IDs when recorded. New complete suites require eight successful child runs covering six gates, including smoke and both negative self-tests. Historical suites without a manifest retain their reported gate verdict but explicitly lack child linkage; logs are not mined to guess it.
 - Scenario IDs, individual assertions, event/DLQ/quarantine counts, named measurements with units and definitions, and an ordered recovery-check sequence. Sequence timestamps remain null when none were recorded.
-- Evidence references, import issues and limitations. Facts use `{value, evidence}`; null means unavailable, not zero. Evidence uses artifact-root-relative paths plus JSON pointers, and is marked `local-only` pending an explicit export policy.
+- Evidence references, import issues and limitations. Facts use `{value, evidence}`; null means unavailable, not zero. Local evidence uses artifact-root-relative paths plus JSON pointers and `local-only` access. Sanitized snapshot references use `snapshot` access and export-relative file paths. Watcher reports also carry an optional per-run evidence revision for browser refresh.
 
 Verdicts:
 
@@ -128,7 +158,7 @@ Tests cover correct and incorrect expected failures, corrupt/missing evidence, r
 
 ### Browser and screenshot review
 
-`make dashboard-test` runs Chromium in the Playwright 1.63.0 Noble image pinned by digest, at Linux ARM64 (emulated on Intel), with bundled fonts, UTC/en-US, fixed fixture dates, reduced motion and 1440×1000 / 390×844 viewports. Unexpected console/page/network errors fail the gate. Numerical assertions are independent of screenshot comparisons. Browser tests do not replace replication E2E tests.
+`make dashboard-test` runs Chromium in the Playwright 1.63.0 Noble image pinned by digest, at Linux ARM64 (emulated on Intel), with bundled fonts, UTC/en-US, fixed fixture dates, reduced motion and 1440×1000 / 390×844 viewports. One worker keeps peak browser memory lower alongside retained POC stacks. Unexpected console/page/network errors fail the gate. Numerical assertions are independent of screenshot comparisons. Browser tests do not replace replication E2E tests.
 
 Ten baseline images live under `test/browser/snapshots/`: introduction, three test pages and expanded database contents, each at desktop and narrow sizes. Browser checks cover the harness diagram, runnable commands before the selectors, removal of the old dashboard, safe evidence links and displayed results. Database checks cover exact values, SQL parameters, schema display, pagination, empty/corrupt/mismatched captures, run changes and overlapping snapshot loads. Review the images before committing a visual change. Updating is always explicit:
 
@@ -138,3 +168,5 @@ make dashboard-test
 ```
 
 Open `dashboard/playwright-report/index.html` for the test report. Failure screenshots, traces and diffs are retained under `dashboard/test-results/`; both directories are ignored. The initial baselines were visually inspected during implementation and are supplied for user review. They must not be automatically regenerated to silence a failing visual test.
+
+Refresh tests use isolated artifact directories, the real importer/watcher, and independent viewers. They exercise new positive/negative/failed/interrupted runs, historical selection, reporting outages, and recovery. Static browser tests use exported files alone. `make dashboard-test-live` opens Chromium first, checks the displayed command, then executes `make e2e-checks WRITE_INTERVAL_MS=250`. It requires changing captured counts before the smoke workload finishes, automatically selected new runs, and all three successful final verdicts with counts checked against raw evidence and zero DLQ. A page marker verifies that no reload occurred. During-run and final screenshots, sampled counts, trace, harness/browser logs and verdict remain under `dashboard/live-results/live.*`, separate from Playwright's disposable fixture output. The normal harness cleanup/`KEEP_STACK` policy applies to each new run.

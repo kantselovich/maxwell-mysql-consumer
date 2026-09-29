@@ -7,6 +7,7 @@ artifacts/
 dashboard/node_modules/
 dashboard/.generated/
 dashboard/test-results/
+dashboard/live-results/
 dashboard/playwright-report/
 dashboard/src/.observablehq/
 dashboard/src/generated/

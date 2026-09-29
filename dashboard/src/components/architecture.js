@@ -1,10 +1,13 @@
 import {el, add} from "./ui.js";
 import {shown} from "./data.js";
+import {snapshot, evidenceURL} from "./report-source.js";
 
 export const valueText = value => value == null ? "Not recorded" : shown(value);
-export function link(text, href) { const a = el("a", text); a.href = href; return a; }
+export function link(text, href) { const a = el("a", text); a.href = snapshot && ["/basics", "/recovery", "/failures"].includes(href) ? `${href}.html` : href; return a; }
 export function evidence(ref, label) {
-  const a = link(label ?? ref.path.split("/").at(-1), `/api/evidence?path=${encodeURIComponent(ref.path)}`);
+  const url = evidenceURL(ref);
+  if (!url) return el("span", "Local evidence", "local-evidence");
+  const a = link(label ?? ref.label ?? ref.path.split("/").at(-1), url);
   a.target = "_blank"; a.rel = "noopener"; return a;
 }
 function stat(node, label, value, unit = "") {
@@ -72,6 +75,6 @@ export function architecture(run, memory = [], inspectDatabase) {
     add(breakdown, el("p", "Includes test setup and marker events.", "small"), evidence({path: events.source}, "Event list")); add(diagram, breakdown);
   }
   const harness = el("div", undefined, "harness-strip");
-  add(harness, el("h3", "Swift test harness · e2e container"), el("p", "Writes to the source → observes events and the DLQ → checks the target → saves results"), el("code", `artifacts/${run.artifactDirectory}/`)); add(diagram, harness);
+  add(harness, el("h3", "Swift test harness · e2e container"), el("p", "Writes to the source → observes events and the DLQ → checks the target → saves results"), el("code", snapshot ? `Saved run: ${run.id}` : `artifacts/${run.artifactDirectory}/`)); add(diagram, harness);
   return diagram;
 }

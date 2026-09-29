@@ -14,7 +14,7 @@ Phase 4 is validated: [crash/outage recovery, quarantine and repair results](PLA
 
 Phase 5 is validated: [complete scenario matrix, measured load results and assessment](PLAN/PHASE_5_RESULTS.md).
 
-The read-only results dashboard is available: `make dashboard-view` imports retained artifacts and starts [localhost:4173](http://localhost:4173), without starting the replication stack. After a test rerun, use `make dashboard-data` and reload; automatic watching/export remain Phase 3. `make dashboard-test` runs isolated Playwright data and desktop/narrow visual checks; `make dashboard-stop` stops the viewer. See the [dashboard documentation](dashboard/README.md) and [dashboard plan](PLAN/DASHBOARD_PLAN.md).
+The read-only results dashboard is available: `make dashboard` starts [localhost:4173](http://localhost:4173) and watches for new test results, without starting the replication stack. `make dashboard-view` starts the viewer alone, `make dashboard-data` explicitly imports artifacts, and `make dashboard-build` exports a static snapshot. `make dashboard-test` runs isolated Playwright data, refresh, export and desktop/narrow visual checks; `make dashboard-test-live` verifies a fresh POC run through the watcher. `make dashboard-stop` stops the viewer and watcher. See the [dashboard documentation](dashboard/README.md) and [dashboard plan](PLAN/DASHBOARD_PLAN.md).
 
 ## Run
 
@@ -61,6 +61,10 @@ The generated manifest records every intended DDL operation and each row's full 
 - `wrong-value` changes one target value after the final marker. Event accounting still passes, but expected/source/target row comparison must fail.
 
 The underlying harness exits 1 in both cases. The self-test runner succeeds only when the recorded failure is exactly `event-manifest` or `row-mismatch`, respectively, and all required services remain healthy. Timeouts, startup errors and unexpected success fail the self-test. To see a normal nonzero failing invocation directly: `make e2e SCENARIO=crud HARNESS_FAULT=missing-event` (or `wrong-value`). Do not enable these injectors for a positive replication run.
+
+For a dashboard demonstration, start `make dashboard`, open Basic replication with **Follow latest** enabled, and run `make e2e-checks WRITE_INTERVAL_MS=250`. This single command covers smoke and both verifier checks; paced writes make incoming evidence easier to follow. `make dashboard-test-live` automates this workflow with Chromium open throughout and checks the live count changes and final results.
+
+The Phase 3 audit/DLQ observer retries temporary Pub/Sub RPC failures up to three times per call, with 250 ms, 500 ms and 1 s backoff. Each RPC retains its five-second deadline; persistent errors still fail the run. `observer-retries.json` records operation, subscription, retry number, timestamp and error. Event validation and expected-failure predicates remain unchanged.
 
 Evidence is under `artifacts/maxwell-e2e-*/`: configuration/seed, workload plans, expected event manifest, raw deliveries (including duplicates and any DLQ records), semantic schema/row comparisons, explicit diffs, ledger/journal/checkpoints, scenario and run JSON results, versions, build/startup/harness/service logs, container/image state and capture checkpoint. Per-service `*-container.json` and `*-processes.txt` preserve health-check history and process state before cleanup, including when startup fails before the harness launches. `host-result.json` distinguishes the host/self-test exit code from the actual harness exit code. Inspect `run-result.json` and `*-diffs.json` first on assertion failure, or `startup.log` and the affected service's diagnostics on startup failure.
 

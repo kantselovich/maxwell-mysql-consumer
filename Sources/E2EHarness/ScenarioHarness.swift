@@ -27,6 +27,13 @@ private struct Observations: Codable {
     var dlq: [CapturedDelivery] = []
     var duplicateDeliveries = 0
 }
+private struct ObserverRetryRecord: Codable {
+    let timestamp: Date
+    let operation: String
+    let subscription: String
+    let retry: Int
+    let error: String
+}
 
 /// Independently drains audit and DLQ while the workload is writing. No access
 /// to the consumer subscription; observing must never steal replication events.
@@ -37,6 +44,7 @@ private actor AuditObserver {
     var state = Observations()
     var canonicalByID: [String: String] = [:]
     var failure: HarnessFailure?
+    var retries: [ObserverRetryRecord] = []
     init(pubsub: PubSub, sourceID: String, artifacts: HarnessArtifacts) {
         self.pubsub = pubsub; self.sourceID = sourceID; self.artifacts = artifacts
     }
@@ -44,16 +52,25 @@ private actor AuditObserver {
         if let failure { throw failure }
         return state
     }
+    private func rpc<T>(_ operation: String, _ subscription: String, body: () async throws -> T) async throws -> T {
+        do {
+            return try await ObserverRetry.call(operation: body, onRetry: { retry, error in
+                retries.append(ObserverRetryRecord(timestamp: Date(), operation: operation,
+                    subscription: subscription, retry: retry, error: String(describing: error)))
+                try artifacts.save(retries, "observer-retries.json")
+                print("RETRY observer \(operation) \(subscription): attempt=\(retry) error=\(error)")
+            })
+        } catch is CancellationError { throw CancellationError() }
+        catch { throw HarnessFailure("observer", "\(operation) \(subscription): \(error)") }
+    }
     func run() async {
         do {
             try artifacts.save(state, "observations.json")
             while !Task.isCancelled {
-                let audit = try await pubsub.pull("cdc-audit")
-                let dlq = try await pubsub.pull("cdc-dlq-observer")
+                let audit = try await rpc("pull", "cdc-audit") { try await pubsub.pull("cdc-audit") }
                 state.deliveries += audit.map(CapturedDelivery.init)
-                state.dlq += dlq.map(CapturedDelivery.init)
                 // Keep raw evidence even if decoding or a contract check fails.
-                if !audit.isEmpty || !dlq.isEmpty { try artifacts.save(state, "observations.json") }
+                if !audit.isEmpty { try artifacts.save(state, "observations.json") }
                 for delivery in audit {
                     guard delivery.orderingKey == "mysql84" else { throw HarnessFailure("ordering-key", "Audit event has wrong ordering key") }
                     let id = try MaxwellEvent(data: delivery.data).identity(source: sourceID)
@@ -67,9 +84,12 @@ private actor AuditObserver {
                         state.payloads.append(String(decoding: delivery.data, as: UTF8.self))
                     }
                 }
-                if !audit.isEmpty || !dlq.isEmpty { try artifacts.save(state, "observations.json") }
-                try await pubsub.ack("cdc-audit", ids: audit.map(\.ackID))
-                try await pubsub.ack("cdc-dlq-observer", ids: dlq.map(\.ackID))
+                if !audit.isEmpty { try artifacts.save(state, "observations.json") }
+                try await rpc("ack", "cdc-audit") { try await pubsub.ack("cdc-audit", ids: audit.map(\.ackID)) }
+                let dlq = try await rpc("pull", "cdc-dlq-observer") { try await pubsub.pull("cdc-dlq-observer") }
+                state.dlq += dlq.map(CapturedDelivery.init)
+                if !dlq.isEmpty { try artifacts.save(state, "observations.json") }
+                try await rpc("ack", "cdc-dlq-observer") { try await pubsub.ack("cdc-dlq-observer", ids: dlq.map(\.ackID)) }
                 guard state.dlq.isEmpty else { throw HarnessFailure("dlq", "Unexpected DLQ delivery; see observations.json") }
                 try await Task.sleep(nanoseconds: 100_000_000)
             }

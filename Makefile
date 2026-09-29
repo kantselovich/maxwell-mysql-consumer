@@ -31,14 +31,20 @@ dashboard-data:
 dashboard-data-test:
 	docker compose -f compose.dashboard.yaml run --build --rm --no-deps reporting npm test
 
-.PHONY: dashboard-view dashboard-stop dashboard-test dashboard-test-update-snapshots
+.PHONY: dashboard dashboard-view dashboard-build dashboard-stop dashboard-test dashboard-test-live dashboard-test-update-snapshots
+dashboard: dashboard-data
+	docker compose -f compose.dashboard.yaml up --build -d viewer watcher
 dashboard-view: dashboard-data
 	docker compose -f compose.dashboard.yaml up --build -d viewer
+dashboard-build: dashboard-data
+	docker compose -f compose.dashboard.yaml run --rm --no-deps -e RUN_IDS="$${RUN_IDS:-}" reporting node reporting/export.ts /artifacts /output/report.json /output/snapshots
 dashboard-stop:
-	docker compose -f compose.dashboard.yaml stop viewer
+	docker compose -f compose.dashboard.yaml stop viewer watcher
 dashboard-test:
 	mkdir -p dashboard/test-results dashboard/playwright-report
 	docker compose -f compose.dashboard.yaml run --build --rm --no-deps browser-tests
 dashboard-test-update-snapshots:
 	mkdir -p dashboard/test-results dashboard/playwright-report
 	docker compose -f compose.dashboard.yaml run --build --rm --no-deps browser-tests npm run test:browser:update
+dashboard-test-live:
+	bash scripts/dashboard-test-live.sh
