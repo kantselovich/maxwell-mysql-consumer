@@ -45,7 +45,45 @@ The page displays reporting freshness and watcher status. **Follow latest** sele
 
 `make dashboard-data` remains an explicit refresh command. An open page discovers the new report automatically. `make dashboard-view` starts the viewer; it leaves an already-running watcher active. `make dashboard-stop` stops both tooling services.
 
-## Static snapshots
+## Static build for GitHub Pages
+
+With Node.js 24.13 or later, run from the repository root:
+
+```sh
+cd dashboard
+npm ci
+npm run build
+npm run preview
+```
+
+Open [localhost:4175/maxwell-mysql-consumer/](http://localhost:4175/maxwell-mysql-consumer/). The preview uses the same repository subpath as `https://<username>.github.io/maxwell-mysql-consumer/` and serves only the built files.
+
+`npm run build` imports the saved test artifacts, selects runs, and prepares the public-data export. It then runs Observable Framework's `observable build` with `observablehq.static.config.js` to render the pages, bundle local assets and add the snapshot metadata through Framework's `head` setting. Framework's `preserveExtension` setting retains `.html` page links. Custom navigation, report requests and evidence links use relative URLs, so the same package also works at a domain root or another repository subpath. The local live viewer continues to use its separate configuration and `build:viewer` command.
+
+The finished website is **`dashboard/dist/`**. Each successful build replaces the generated site, including its previously selected results. The default selects the latest individual run from each of phases 3, 4 and 5, including failed attempts. To select exact runs, supply a comma-separated list (replace the example IDs with actual IDs):
+
+```sh
+RUN_IDS=maxwell-e2e-123-456,maxwell-phase4-123-456,maxwell-phase5-malformed-123-456,maxwell-phase5-unsupported-123-456,maxwell-phase5-workload-123-456 npm run build
+```
+
+Include each of the three Phase 5 scenarios to present invalid JSON, unsupported schema and load results together. Additional runs remain available in each page's selector. `snapshot.json` records the selected IDs and generation time. By default, artifacts are read from `../artifacts`; `ARTIFACT_ROOT=/absolute/path/to/artifacts npm run build` selects another local evidence directory. Builds require saved runs and fail if a requested run ID is unavailable.
+
+The package includes the introduction, three test pages, diagrams, verdicts, counts, checks and numeric memory/latency samples. SQL, database rows, configuration files, Git metadata, container names, logs and raw diagnostics stay local. Review the generated package and confirm permission to publish it.
+
+To publish using a separate personal repository:
+
+1. Create a repository named `maxwell-mysql-consumer` on your personal account.
+2. Copy the **contents** of `dashboard/dist/` to that repository's root, including the hidden `.nojekyll` file. Keep the application repository and raw artifacts separate. Commit and push the generated website.
+3. In the publishing repository, choose **Settings → Pages → Deploy from a branch → main → /(root)** and save.
+4. Open `https://<username>.github.io/maxwell-mysql-consumer/` after deployment completes.
+
+The `.nojekyll` file preserves Observable's underscore-prefixed asset directories when publishing from a branch. An Actions workflow can instead upload `dist/` using GitHub's Pages actions. See [Observable deployment](https://observablehq.github.io/framework/deploying) and [GitHub publishing settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+
+To update the website, rerun tests locally, repeat `npm run build`, review the new output, and replace the previous generated files in the publishing repository. Visitors see the saved results from that build. `npm run preview` is only a local check; it uploads nothing.
+
+## Archived static snapshots
+
+The existing Docker command creates a dated snapshot directory without requiring host Node.js:
 
 ```sh
 make dashboard-build
@@ -57,14 +95,14 @@ Replace the example IDs with actual run IDs. The default selects the latest date
 
 The export includes the four presentation pages, local assets, selected verdicts, counts, assertions, measurements, exported check summaries and sanitized numeric memory/latency samples. Configurations, image/container names, Git metadata, table names, SQL plans, database rows, logs and raw diagnostics remain local. References to them display **Local evidence** as text. Included supporting files have working static links. Review the selected IDs and report before sharing.
 
-Serve the generated directory at the root of any static HTTP host. From `dashboard/`, a local preview is:
+Serve the generated directory at a domain root or repository subpath. From `dashboard/`, a local preview is:
 
 ```sh
-node viewer/static.ts .generated/snapshots/<printed-directory-name>
-# http://localhost:4175
+node viewer/static.ts .generated/snapshots/<printed-directory-name> /maxwell-mysql-consumer/
+# http://localhost:4175/maxwell-mysql-consumer/
 ```
 
-The snapshot runs entirely from its own files, with no artifact directory, database, Docker socket or API server. Page links use `.html` paths. Browser fixture tests remove the source artifacts before checking the exported report.
+The snapshot runs entirely from its own files, with no artifact directory, database, Docker socket or API server. Page links use relative `.html` paths. Browser fixture tests remove the source artifacts before checking the exported report, at both domain-root and repository-subpath URLs. A separate browser check executes `npm run build` and verifies the packaged pages, selected results, diagrams, charts and evidence files under `/maxwell-mysql-consumer/`.
 
 ## Views and interpretation
 

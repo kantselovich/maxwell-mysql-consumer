@@ -10,6 +10,8 @@
     "data": "node reporting/cli.ts",
     "test": "node --test test/*.test.ts test/*.test.js",
     "typecheck": "tsc --noEmit",
+    "build": "node viewer/build-static.ts",
+    "preview": "node viewer/static.ts dist /maxwell-mysql-consumer/",
     "build:viewer": "node viewer/build.ts",
     "viewer": "node viewer/server.ts",
     "test:browser": "playwright test",

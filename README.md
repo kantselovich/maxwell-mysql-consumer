@@ -36,6 +36,21 @@ make dashboard-stop
 
 Saved results and any retained test containers remain available. For manual refresh, static exports and browser verification, see the [dashboard documentation](dashboard/README.md).
 
+### Publish a static dashboard
+
+After running the tests locally, use Node.js 24.13 or later to package their saved results:
+
+```sh
+cd dashboard
+npm ci
+npm run build
+npm run preview
+```
+
+Preview at [localhost:4175/maxwell-mysql-consumer/](http://localhost:4175/maxwell-mysql-consumer/). `npm run build` uses Observable Framework to generate `dashboard/dist/`, including selected results, charts and supporting check files. Publish the **contents of `dist/`**, including `.nojekyll`, to a separate GitHub Pages repository named `maxwell-mysql-consumer` for `https://<username>.github.io/maxwell-mysql-consumer/`. The published pages work entirely from static files.
+
+The default includes the latest individual run from each of phases 3, 4 and 5. Set `RUN_IDS` to include specific runs, such as all three failure/load scenarios. Review the package and confirm permission to publish before uploading. See [static build and GitHub Pages instructions](dashboard/README.md#static-build-for-github-pages) for selection, deployment and updates.
+
 ## POC phases and results
 
 Phase 1 establishes compatibility and captures ordered events. Phase 2 adds bounded schema/data replication, durable deduplication and a recoverable DDL journal. See the [phased plan](PLAN/OPTION_1_TECHNICAL_PLAN.md).

@@ -3,7 +3,7 @@ import {shown} from "./data.js";
 import {snapshot, evidenceURL} from "./report-source.js";
 
 export const valueText = value => value == null ? "Not recorded" : shown(value);
-export function link(text, href) { const a = el("a", text); a.href = snapshot && ["/basics", "/recovery", "/failures"].includes(href) ? `${href}.html` : href; return a; }
+export function link(text, href) { const a = el("a", text); a.href = href; return a; }
 export function evidence(ref, label) {
   const url = evidenceURL(ref);
   if (!url) return el("span", "Local evidence", "local-evidence");

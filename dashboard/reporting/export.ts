@@ -37,7 +37,8 @@ export function publicRun(run: Run): Run {
     } : null}
   };
 }
-export async function exportSnapshot(options:{report:Report; artifacts:string; site:string; output:string; runIds?:string[]; generatedAt?:string}) {
+// Omit site when preparing public data for Observable's static build.
+export async function exportSnapshot(options:{report:Report; artifacts:string; site?:string; output:string; runIds?:string[]; generatedAt?:string}) {
   const {report, artifacts, site} = options, output = resolve(options.output);
   await outputOutsideArtifacts(artifacts, join(output, "snapshot"));
   const selected = selectRuns(report, options.runIds ?? []);
@@ -53,14 +54,14 @@ export async function exportSnapshot(options:{report:Report; artifacts:string; s
         if (entry.isSymbolicLink()) throw new Error("Static site contains a symlink");
         if (entry.isDirectory()) { await mkdir(join(staging, path), {recursive:true}); await copy(join(directory, entry.name), path + "/"); }
         else if (entry.isFile()) {
-          const file = await safeFile(site, path);
+          const file = await safeFile(site!, path);
           let bytes = await readFile(file);
-          if (path.endsWith(".html")) bytes = Buffer.from(bytes.toString().replace(/href="\/(basics|recovery|failures)"/g, 'href="/$1.html"').replace("</head>", `<script id="dashboard-snapshot" type="application/json">${JSON.stringify(manifest).replaceAll("<", "\\u003c")}</script></head>`));
+          if (path.endsWith(".html")) bytes = Buffer.from(bytes.toString().replace(/href="\/(basics|recovery|failures)"/g, 'href="./$1.html"').replace("</head>", `<script id="dashboard-snapshot" type="application/json">${JSON.stringify(manifest).replaceAll("<", "\\u003c")}</script></head>`));
           await writeFile(join(staging, path), bytes, {flag:"wx"});
         }
       }
     }
-    await copy(site);
+    if (site) await copy(site);
     const runs:Run[] = [];
     for (const source of selected) {
       const run = publicRun(source), directory = `evidence/${run.id}`;
@@ -94,6 +95,7 @@ export async function exportSnapshot(options:{report:Report; artifacts:string; s
     await mkdir(join(staging, "data"));
     await writeFile(join(staging, "data/report.json"), JSON.stringify({schemaVersion:1, generatedAt, catalog:report.catalog, runs, discoveryIssues:[], summary} satisfies Report));
     await writeFile(join(staging, "snapshot.json"), JSON.stringify(manifest, null, 2));
+    await writeFile(join(staging, ".nojekyll"), "");
     await rename(staging, join(output, name));
     return join(output, name);
   } catch (error) { await rm(staging, {recursive:true, force:true}); throw error; }

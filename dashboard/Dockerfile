@@ -8,7 +8,7 @@ COPY dashboard/reporting ./reporting
 COPY dashboard/test ./test
 COPY dashboard/viewer ./viewer
 COPY dashboard/src ./src
-COPY dashboard/observablehq.config.js dashboard/playwright.config.ts ./
+COPY dashboard/observablehq.config.js dashboard/observablehq.static.config.js dashboard/playwright.config.ts ./
 COPY scripts /workspace/scripts
 COPY Makefile compose.yaml compose.phase4.yaml /workspace/
 COPY Sources/E2EHarness /workspace/Sources/E2EHarness

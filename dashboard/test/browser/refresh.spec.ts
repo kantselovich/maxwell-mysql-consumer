@@ -61,7 +61,7 @@ test("watcher refreshes runs without reload, follows newer failures and preserve
     expect(errors).toEqual([]);
   } finally {await page.close(); await watcher.close(); await close(server); await rm(workspace,{recursive:true,force:true});}
 });
-test("static snapshot works separately with exported checks and numeric charts", async ({page, request}) => {
+for (const basePath of ["/", "/maxwell-mysql-consumer/"]) test(`static snapshot works at ${basePath} with exported checks and numeric charts`, async ({page, request}) => {
   const workspace=await mkdtemp(join(tmpdir(),"browser-static-")), artifacts=join(workspace,"artifacts"); await mkdir(artifacts);
   let server:Server|undefined;
   const errors:string[]=[]; page.on("pageerror",error=>errors.push(error.message)); page.on("requestfailed",r=>errors.push(r.url())); page.on("response",r=>{if(r.status()>=400)errors.push(r.url());});
@@ -74,7 +74,7 @@ test("static snapshot works separately with exported checks and numeric charts",
     const report=await importArtifacts(artifacts,"2026-09-28T23:30:00Z");
     const output=await exportSnapshot({report,artifacts,site:resolve(".generated/site"),output:join(workspace,"exports"),generatedAt:"2026-09-28T23:30:00Z",runIds:["maxwell-e2e-static","maxwell-phase5-static"]});
     await rm(artifacts,{recursive:true}); // The only remaining inputs are static files.
-    server=staticViewer(output); const url=await listen(server);
+    server=staticViewer(output,basePath); const url=(await listen(server)) + basePath;
     await page.goto(url);
     await expect(page.locator('.narrative[data-ready="true"]')).toBeVisible();
     await expect(page.getByText(/Snapshot generated 2026-09-28T23:30:00Z/)).toBeVisible();
@@ -86,15 +86,18 @@ test("static snapshot works separately with exported checks and numeric charts",
     await expect(page.locator(".compose-configuration")).toHaveCount(0);
     await expect(page.locator('a[href^="/api/"]')).toHaveCount(0);
     const evidence=page.getByRole("link",{name:"Exported checks"}).first();
-    const checks=await request.get(url + (await evidence.getAttribute("href"))!); expect(checks.status()).toBe(200);
+    const checks=await request.get(new URL((await evidence.getAttribute("href"))!,page.url()).href); expect(checks.status()).toBe(200);
     expect((await checks.json()).counts.appliedEvents.value).toBe(2);
     await page.getByRole("link",{name:"Failure handling and load",exact:true}).click();
     await expect(page.locator('[data-service="consumer"]')).toContainText("6 MiB");
     await expect(page.locator('[data-service="maxwell"]')).toContainText("220 MiB");
     await expect(page.getByRole("img",{name:/End-to-end latency distribution/})).toBeVisible();
     await expect(page.getByText("Local evidence",{exact:true}).first()).toBeVisible();
-    const manifest=await (await request.get(url + "/snapshot.json")).json(); expect(manifest.runIds).toEqual(["maxwell-e2e-static","maxwell-phase5-static"]);
-    for (const path of ["/api/report","/api/evidence?path=private","/evidence/maxwell-e2e-static/compose.log"]) expect((await request.get(url+path)).status()).toBe(404);
+    const manifest=await (await request.get(url + "snapshot.json")).json(); expect(manifest.runIds).toEqual(["maxwell-e2e-static","maxwell-phase5-static"]);
+    for (const path of ["api/report","api/evidence?path=private","evidence/maxwell-e2e-static/compose.log"]) expect((await request.get(url+path)).status()).toBe(404);
+    await page.getByRole("navigation",{name:"POC pages"}).getByRole("link",{name:"Introduction",exact:true}).click();
+    await expect(page).toHaveURL(url);
+    await expect(page.locator('.narrative[data-ready="true"]')).toBeVisible();
     expect(errors).toEqual([]);
   } finally {await page.close(); if(server) await close(server); await rm(workspace,{recursive:true,force:true});}
 });

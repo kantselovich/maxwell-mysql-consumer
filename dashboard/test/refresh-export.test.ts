@@ -76,7 +76,10 @@ test("static export selects explicit runs, keeps safe checks and samples, and st
     }
     await inspect(exported);
     assert.match(await readFile(join(exported,"index.html"),"utf8"),/dashboard-snapshot/);
-    assert.match(await readFile(join(exported,"index.html"),"utf8"),/href="\/basics.html"/);
+    assert.match(await readFile(join(exported,"index.html"),"utf8"),/href="\.\/basics.html"/);
+    assert.equal(await readFile(join(exported,".nojekyll"),"utf8"), "");
+    const dataOnly=await exportSnapshot({report,artifacts,output,runIds:[run.id]});
+    assert.deepEqual((await readdir(dataOnly)).sort(), [".nojekyll","data","evidence","snapshot.json"]);
     await assert.rejects(exportSnapshot({report,artifacts,site,output:join(artifacts,"bad")}));
     await symlink(join(site,"index.html"),join(site,"unsafe.html"));
     await assert.rejects(exportSnapshot({report,artifacts,site,output}));

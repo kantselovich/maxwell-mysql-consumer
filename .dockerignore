@@ -6,6 +6,7 @@ artifacts
 .upstream
 dashboard/node_modules
 dashboard/.generated
+dashboard/dist
 dashboard/test-results
 dashboard/live-results
 dashboard/playwright-report

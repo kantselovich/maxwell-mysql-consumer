@@ -3,13 +3,13 @@ import {orderedRuns, shown, memorySamples, latencyBins} from "./data.js";
 import {architecture, evidence, link, valueText} from "./architecture.js";
 import {stories, metricNames} from "./stories.js";
 import {databaseView} from "./database.js";
-import {snapshot, reportURL, evidenceURL} from "./report-source.js";
+import {snapshot, reportURL, evidenceURL, pageURL} from "./report-source.js";
 import {configuration} from "./configuration.js";
 
 export function navigation(current) {
   const nav = el("nav", undefined, "story-nav"); nav.setAttribute("aria-label", "POC pages");
   for (const [href, label] of [["/", "Introduction"], ...Object.values(stories).map(s => [s.path, s.title])]) {
-    const a = link(label, href); if (href === current) a.setAttribute("aria-current", "page"); add(nav, a);
+    const a = link(label, pageURL(href)); if (href === current) a.setAttribute("aria-current", "page"); add(nav, a);
   }
   return nav;
 }
