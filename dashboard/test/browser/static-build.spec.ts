@@ -33,7 +33,7 @@ test("npm build packages Observable pages and selected results for GitHub projec
     // Framework must clear previously published runs when rebuilding dist.
     await mkdir("dist/evidence/stale-run", {recursive:true});
     await writeFile("dist/evidence/stale-run/checks.json", "PRIVATE_BUILD_INPUT");
-    const build = await exec("npm", ["run", "build"], {env:{...process.env, ARTIFACT_ROOT:artifacts, RUN_IDS:selected.join(",")}, maxBuffer:8*1024*1024});
+    const build = await exec("npm", ["run", "snapshot"], {env:{...process.env, ARTIFACT_ROOT:artifacts, RUN_IDS:selected.join(",")}, maxBuffer:8*1024*1024});
     expect(stripVTControlCharacters(build.stdout)).toContain("built 4 pages");
     expect(await readFile("dist/.nojekyll", "utf8")).toBe("");
     expect((await readdir("dist/evidence")).sort()).toEqual([...selected].sort());
@@ -48,6 +48,14 @@ test("npm build packages Observable pages and selected results for GitHub projec
     }
     await inspect("dist");
     await rm(artifacts, {recursive:true}); // Published site has no local evidence to fall back on.
+    // Fresh clones use the saved snapshot; CI selects it explicitly. Both
+    // preserve all selected Phase 5 runs and the original capture timestamp.
+    for (const env of [{...process.env}, {...process.env, SNAPSHOT_ROOT:"published"}]) {
+      await exec("npm", ["run", "build"], {env, maxBuffer:8*1024*1024});
+      expect(JSON.parse(await readFile("dist/snapshot.json","utf8"))).toEqual(manifest);
+      expect((await readdir("dist/evidence")).sort()).toEqual([...selected].sort());
+    }
+    await inspect("dist");
     server = staticViewer(resolve("dist"), "/maxwell-mysql-consumer/");
     await new Promise<void>(done => server!.listen(0,"127.0.0.1",done));
     const address = server.address(); if (!address || typeof address === "string") throw new Error("No server");

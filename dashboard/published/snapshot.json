@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-29T16:07:09.837Z",
+  "runIds": [
+    "maxwell-e2e-1790647808-99305",
+    "maxwell-phase4-1790647934-282",
+    "maxwell-phase5-workload-1790648490-4806"
+  ],
+  "evidencePolicy": "Recorded checks and sanitized numeric samples; raw artifacts remain local."
+}

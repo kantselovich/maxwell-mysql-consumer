@@ -1,0 +1,165 @@
+{
+  "runId": "maxwell-e2e-1790647808-99305",
+  "verdict": "passed",
+  "expectedOutcome": "expected-failure",
+  "counts": {
+    "expectedEvents": {
+      "value": 23,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "capturedEvents": {
+      "value": 23,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "appliedEvents": {
+      "value": 23,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "dlqDeliveries": {
+      "value": 0,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "uniqueQuarantines": {
+      "value": null,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "expectedQuarantines": {
+      "value": null,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  },
+  "assertions": [
+    {
+      "id": "check-1",
+      "status": "passed",
+      "description": "Run metadata version and identity agree with the artifact directory and terminal result.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-2",
+      "status": "passed",
+      "description": "Host validated the deliberate row-mismatch failure, not an infrastructure error.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-3",
+      "status": "passed",
+      "description": "No unexpected DLQ deliveries.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-4",
+      "status": "failed",
+      "description": "Recorded scenario outcome.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-5",
+      "status": "passed",
+      "description": "A valid terminal host result records this phase's completion.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  ],
+  "rawExitCodes": {
+    "host": {
+      "value": 0,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "harness": {
+      "value": 1,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  },
+  "measurements": []
+}

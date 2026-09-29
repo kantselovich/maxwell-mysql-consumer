@@ -11,6 +11,7 @@
     "test": "node --test test/*.test.ts test/*.test.js",
     "typecheck": "tsc --noEmit",
     "build": "node viewer/build-static.ts",
+    "snapshot": "node viewer/build-static.ts --save-snapshot",
     "preview": "node viewer/static.ts dist /maxwell-mysql-consumer/",
     "build:viewer": "node viewer/build.ts",
     "viewer": "node viewer/server.ts",

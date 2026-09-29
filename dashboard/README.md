@@ -6,7 +6,7 @@ Phases 1–2 provide an artifact importer, read-only Observable Framework viewer
 
 With Docker running, use `make dashboard` from the repository root and open [localhost:4173](http://localhost:4173). Choose a page from the top navigation and enable **Follow latest**, then run its **Run this test** command in a terminal. Results refresh while the page stays open. Use `make dashboard-stop` when finished.
 
-The [repository quick start](../README.md#quick-start-dashboard-and-tests) lists the commands for every page. The command-to-script mapping below identifies their runners and Compose files.
+The [repository quick start](../README.md#run-the-dashboard-and-tests) lists the commands for every page. The command-to-script mapping below identifies their runners and Compose files.
 
 ## Dashboard tooling commands
 
@@ -58,28 +58,35 @@ npm run preview
 
 Open [localhost:4175/maxwell-mysql-consumer/](http://localhost:4175/maxwell-mysql-consumer/). The preview uses the same repository subpath as `https://<username>.github.io/maxwell-mysql-consumer/` and serves only the built files.
 
-`npm run build` imports the saved test artifacts, selects runs, and prepares the public-data export. It then runs Observable Framework's `observable build` with `observablehq.static.config.js` to render the pages, bundle local assets and add the snapshot metadata through Framework's `head` setting. Framework's `preserveExtension` setting retains `.html` page links. Custom navigation, report requests and evidence links use relative URLs, so the same package also works at a domain root or another repository subpath. The local live viewer continues to use its separate configuration and `build:viewer` command.
+`npm run build` imports local test artifacts when available. A fresh clone uses the sanitized snapshot checked into `published/`. `SNAPSHOT_ROOT=published npm run build` explicitly selects that snapshot, as the GitHub Actions workflow does. Both inputs pass through the same public-data export. The build then runs Observable Framework's `observable build` with `observablehq.static.config.js` to render the pages, bundle local assets and add the snapshot metadata through Framework's `head` setting. Framework's `preserveExtension` setting retains `.html` page links. Custom navigation, report requests and evidence links use relative URLs, so the same package also works at a domain root or another repository subpath. The local live viewer continues to use its separate configuration and `build:viewer` command.
 
-The finished website is **`dashboard/dist/`**. Each successful build replaces the generated site, including its previously selected results. The default selects the latest individual run from each of phases 3, 4 and 5, including failed attempts. To select exact runs, supply a comma-separated list (replace the example IDs with actual IDs):
+The finished website is **`dashboard/dist/`**. Each successful build replaces the generated site, including its previously selected results. From local artifacts, the default selects the latest individual run from each of phases 3, 4 and 5, including failed attempts. From a saved snapshot, it preserves all runs listed in the snapshot manifest. To select exact runs, supply a comma-separated list (replace the example IDs with actual IDs):
 
 ```sh
 RUN_IDS=maxwell-e2e-123-456,maxwell-phase4-123-456,maxwell-phase5-malformed-123-456,maxwell-phase5-unsupported-123-456,maxwell-phase5-workload-123-456 npm run build
 ```
 
-Include each of the three Phase 5 scenarios to present invalid JSON, unsupported schema and load results together. Additional runs remain available in each page's selector. `snapshot.json` records the selected IDs and generation time. By default, artifacts are read from `../artifacts`; `ARTIFACT_ROOT=/absolute/path/to/artifacts npm run build` selects another local evidence directory. Builds require saved runs and fail if a requested run ID is unavailable.
+Include each of the three Phase 5 scenarios to present invalid JSON, unsupported schema and load results together. Additional runs remain available in each page's selector. `snapshot.json` records the selected IDs and generation time. Local artifacts are read from `../artifacts`; `ARTIFACT_ROOT=/absolute/path/to/artifacts npm run build` selects another local evidence directory. An explicit artifact path must exist. Builds fail if a requested run ID is unavailable. Choose either `ARTIFACT_ROOT` or `SNAPSHOT_ROOT` for a build.
 
 The package includes the introduction, three test pages, diagrams, verdicts, counts, checks and numeric memory/latency samples. SQL, database rows, configuration files, Git metadata, container names, logs and raw diagnostics stay local. Review the generated package and confirm permission to publish it.
 
-To publish using a separate personal repository:
+### Publish from the full source repository
 
-1. Create a repository named `maxwell-mysql-consumer` on your personal account.
-2. Copy the **contents** of `dashboard/dist/` to that repository's root, including the hidden `.nojekyll` file. Keep the application repository and raw artifacts separate. Commit and push the generated website.
-3. In the publishing repository, choose **Settings → Pages → Deploy from a branch → main → /(root)** and save.
-4. Open `https://<username>.github.io/maxwell-mysql-consumer/` after deployment completes.
+The [public repository](https://github.com/kantselovich/maxwell-mysql-consumer) contains the Swift application, Docker setup, test harness, dashboard source and the sanitized results under `dashboard/published/`. The [Pages workflow](../.github/workflows/pages.yml) runs on pushes to `main` and manual dispatch. It installs locked dependencies, type-checks and tests the dashboard tools, runs `SNAPSHOT_ROOT=published npm run build`, and uploads only `dashboard/dist/` for deployment. Replication experiments run locally; CI rebuilds their saved presentation.
 
-The `.nojekyll` file preserves Observable's underscore-prefixed asset directories when publishing from a branch. An Actions workflow can instead upload `dist/` using GitHub's Pages actions. See [Observable deployment](https://observablehq.github.io/framework/deploying) and [GitHub publishing settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+Pages is configured under **Settings → Pages → Source → GitHub Actions**. The website is [kantselovich.github.io/maxwell-mysql-consumer](https://kantselovich.github.io/maxwell-mysql-consumer/). See [Observable deployment](https://observablehq.github.io/framework/deploying) and [GitHub publishing settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
-To update the website, rerun tests locally, repeat `npm run build`, review the new output, and replace the previous generated files in the publishing repository. Visitors see the saved results from that build. `npm run preview` is only a local check; it uploads nothing.
+To update the public results after rerunning tests, run from `dashboard/`:
+
+```sh
+npm run snapshot
+# Or include a reviewed selection of actual run IDs:
+RUN_IDS=<basic-run>,<recovery-run>,<invalid-json-run>,<unsupported-schema-run>,<load-run> npm run snapshot
+```
+
+`npm run snapshot` builds from local artifacts and replaces the generated `published/data/`, `published/evidence/` and `published/snapshot.json`. Review and commit those changes, then push to `main`. Source-only changes can be pushed with the existing snapshot. The workflow deploys the updated presentation. `npm run preview` is a local check and uploads nothing.
+
+For another static host, upload the contents of `dist/`. The generated `.nojekyll` is also included for optional branch-based Pages hosting.
 
 ## Archived static snapshots
 

@@ -1,0 +1,332 @@
+{
+  "runId": "maxwell-phase5-workload-1790648490-4806",
+  "verdict": "passed",
+  "expectedOutcome": "replication-success",
+  "counts": {
+    "expectedEvents": {
+      "value": 2009,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "capturedEvents": {
+      "value": 2009,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "appliedEvents": {
+      "value": 2009,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "dlqDeliveries": {
+      "value": 0,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "uniqueQuarantines": {
+      "value": 0,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "expectedQuarantines": {
+      "value": 0,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  },
+  "assertions": [
+    {
+      "id": "check-1",
+      "status": "passed",
+      "description": "Run metadata version and identity agree with the artifact directory and terminal result.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-2",
+      "status": "passed",
+      "description": "Repeated diagnostic identities have identical contents.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-3",
+      "status": "passed",
+      "description": "Independent expected, captured and applied unique-event accounting agrees.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-4",
+      "status": "passed",
+      "description": "Transaction/rollback/rotation/backlog workload completed.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-5",
+      "status": "passed",
+      "description": "Positive load run has no DLQ diagnostics.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-6",
+      "status": "passed",
+      "description": "Required performance measurements are finite, nonnegative and match event accounting.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-7",
+      "status": "passed",
+      "description": "A valid terminal host result records this phase's completion.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  ],
+  "rawExitCodes": {
+    "host": {
+      "value": 0,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "harness": {
+      "value": null,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  },
+  "measurements": [
+    {
+      "id": "expectedEvents",
+      "value": 2009,
+      "unit": "events",
+      "definition": "Expected unique DDL and committed DML events.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "measuredDMLEvents",
+      "value": 2006,
+      "unit": "events",
+      "definition": "DML events with source-submit and target-observation timestamps.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "backlogEvents",
+      "value": 1006,
+      "unit": "events",
+      "definition": "Initial unapplied committed DML; not a broker queue-depth metric.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "backlogAtStreamStart",
+      "value": 1001,
+      "unit": "events",
+      "definition": "Initial events still unapplied when continuing source writes start.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "backlogRecoverySeconds",
+      "value": 40.324883222579956,
+      "unit": "seconds",
+      "definition": "Pre-restart marker to first observation that initial backlog applied; includes start/poll overhead.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "backlogEventsPerSecond",
+      "value": 24.94737540707097,
+      "unit": "events/second",
+      "definition": "Initial backlog divided by observational recovery interval while writes continue.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "streamEventsPerSecond",
+      "value": 14.858241641589032,
+      "unit": "events/second",
+      "definition": "Continuing writes divided by writing, convergence and drain time.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "latencyP50Seconds",
+      "value": 37.15077066421509,
+      "unit": "seconds",
+      "definition": "Nearest-rank p50 of source pre-statement/pre-COMMIT to target-ledger observation, including backlog and polling.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "latencyP95Seconds",
+      "value": 39.490511894226074,
+      "unit": "seconds",
+      "definition": "Nearest-rank p95 of source pre-statement/pre-COMMIT to target-ledger observation, including backlog and polling.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "latencyP99Seconds",
+      "value": 41.71654462814331,
+      "unit": "seconds",
+      "definition": "Nearest-rank p99 of source pre-statement/pre-COMMIT to target-ledger observation, including backlog and polling.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  ]
+}

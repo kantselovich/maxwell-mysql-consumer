@@ -1,0 +1,178 @@
+{
+  "runId": "maxwell-phase4-1790647934-282",
+  "verdict": "passed",
+  "expectedOutcome": "recovery",
+  "counts": {
+    "expectedEvents": {
+      "value": 22,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "capturedEvents": {
+      "value": 22,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "appliedEvents": {
+      "value": 22,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "dlqDeliveries": {
+      "value": 3,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "uniqueQuarantines": {
+      "value": 2,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "expectedQuarantines": {
+      "value": 2,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  },
+  "assertions": [
+    {
+      "id": "check-1",
+      "status": "passed",
+      "description": "Run metadata version and identity agree with the artifact directory and terminal result.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-2",
+      "status": "passed",
+      "description": "Repeated diagnostic identities have identical contents.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-3",
+      "status": "passed",
+      "description": "Independent expected, captured and applied unique-event accounting agrees.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-4",
+      "status": "passed",
+      "description": "Crash/outage/replay/publication/queue-loss checks were recorded.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-5",
+      "status": "passed",
+      "description": "Exactly two expected quarantines were published and resolved; duplicate identical diagnostics are allowed.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    {
+      "id": "check-6",
+      "status": "passed",
+      "description": "A valid terminal host result records this phase's completion.",
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  ],
+  "rawExitCodes": {
+    "host": {
+      "value": 0,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    },
+    "harness": {
+      "value": null,
+      "evidence": [
+        {
+          "path": "local-evidence",
+          "pointer": "",
+          "access": "local-only",
+          "label": "Local evidence"
+        }
+      ]
+    }
+  },
+  "measurements": []
+}
