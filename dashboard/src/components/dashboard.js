@@ -2,6 +2,7 @@ import {el, add, heading, badge, table, bars} from "./ui.js";
 import {orderedRuns, shown, memorySamples, latencyBins} from "./data.js";
 import {architecture, evidence, link, valueText} from "./architecture.js";
 import {stories, metricNames} from "./stories.js";
+import {databaseView} from "./database.js";
 
 export function navigation(current) {
   const nav = el("nav", undefined, "story-nav"); nav.setAttribute("aria-label", "POC pages");
@@ -69,7 +70,11 @@ export async function mount(root, phase) {
         catch { sampleIssue = "Memory samples could not be read. Memory values are shown as not recorded."; }
       }
       if (token !== generation) return;
-      add(graph, architecture(run, memory));
+      const databases = databaseView(run), databaseSummary = databases.querySelector("summary");
+      add(graph, architecture(run, memory, databaseSummary ? () => {
+        databaseSummary.parentElement.open = true;
+        databaseSummary.focus(); databaseSummary.scrollIntoView({block: "start"});
+      } : undefined));
       if (sampleIssue) add(view, el("p", sampleIssue, "notice"));
       const timing = run.measurements.filter(m => ["backlogRecoverySeconds", "latencyP95Seconds", "streamEventsPerSecond"].includes(m.id));
       if (timing.length) {
@@ -79,6 +84,7 @@ export async function mount(root, phase) {
         add(view, strip);
       }
 
+      add(view, databases);
       heading(view, "What the test does"); list(view, story.steps);
       const selectedScenarios = report.catalog.filter(s => run.scenarioIds.includes(s.id));
       for (const scenario of selectedScenarios) {

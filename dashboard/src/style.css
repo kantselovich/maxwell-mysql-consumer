@@ -105,6 +105,7 @@ summary { cursor: pointer; font-weight: 600; }
 .service-card details { font-size: 12px; padding: 10px 0; margin-top: 14px; }
 .service-card details a { display: block; margin: 5px 0; }
 .service-card > a { font-size: 12px; }
+.service-card > button { display: block; font-size: 12px; margin-top: 14px; }
 .step-number { font-size: 11px; color: #53696f; }
 .service-role { font-size: 12px; min-height: 36px; color: #53696f; }
 .node-stat { display: flex; flex-direction: column; gap: 3px; margin: 14px 0; }
@@ -134,6 +135,16 @@ summary { cursor: pointer; font-weight: 600; }
 .selected-experiment h3 { font-size: 16px; margin: 10px 0; }
 .result-summary { padding: 14px 18px; background: #e3f0e8; border-left: 3px solid #388365; }
 .page-navigation { display: flex; justify-content: space-between; gap: 16px; margin-top: 36px; padding: 20px 0; border-top: 1px solid #b8cec5; }
+.database-view label { display: block; margin: 18px 0; }
+.database-view select { width: 100%; }
+.database-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
+.database-side { min-width: 0; padding: 16px; background: white; border: 1px solid #c9d8d1; border-radius: 7px; }
+.database-side h3 { margin-top: 0; font-size: 16px; }
+.database-view code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.database-side pre { max-height: 420px; overflow: auto; margin: 12px 0; }
+.database-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 14px 0; }
+.database-pagination button:disabled { opacity: .5; cursor: default; }
+@media (max-width: 800px) { .database-sides { grid-template-columns: 1fr; } }
 @media (max-width: 1000px) {
   .pipeline { grid-template-columns: 1fr; gap: 24px; }
   .service-card:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -26px; }

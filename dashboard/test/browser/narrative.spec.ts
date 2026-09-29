@@ -134,6 +134,84 @@ test("load memory is only Maxwell and consumer, latency is end-to-end, DLQ is ze
   await expect(page.locator(".timing-strip")).toContainText("95th percentile latency: 1.8 seconds");
   await expect(page.getByText("2 recorded samples; ranges are seconds. The final range includes its upper boundary.")).toBeVisible();
 });
+test("database contents show exact values, schema, SQL parameters and pagination", async ({page, request}) => {
+  await open(page, "/basics?run=maxwell-e2e-positive");
+  await page.locator('[data-service="mysql84"]').getByRole("button", {name:"View saved data"}).click();
+  const contents = page.getByRole("region", {name:"Database contents"});
+  await expect(contents.getByText("Source and target rows match.", {exact:true})).toBeVisible();
+  for (const side of ["source", "target"]) {
+    const card = contents.locator(`[data-database="${side}"]`);
+    await expect(card).toContainText("28 saved rows");
+    await expect(card).toContainText("18446744073709551615");
+    await expect(card).toContainText("final 你好 🐘");
+    await expect(card).toContainText("<script>window.evidenceExecuted=true</script>");
+    await expect(card.getByRole("cell", {name:'""', exact:true})).toBeVisible();
+    await expect(card.getByRole("cell", {name:'"NULL"', exact:true})).toBeVisible();
+    await expect(card.getByRole("cell", {name:'NULL', exact:true})).toBeVisible();
+    await expect(card.getByRole("row")).toHaveCount(26);
+  }
+  expect(await page.evaluate(() => (window as unknown as {evidenceExecuted?: boolean}).evidenceExecuted)).toBeUndefined();
+  await contents.getByRole("button", {name:"Next page"}).click();
+  await expect(contents).toContainText("26–28 of 28");
+  await expect(contents.locator('[data-database="source"]').getByRole("row")).toHaveCount(4);
+  await contents.getByText("Schema definitions", {exact:true}).click();
+  await expect(contents).toContainText("Source and target schema definitions match.");
+  await expect(contents).toContainText('"bigint unsigned"');
+  await contents.getByText("Source SQL plans", {exact:true}).click();
+  await expect(contents).toContainText("INSERT INTO poc.records (id, value) VALUES (?, ?)");
+  await expect(contents.getByRole("table", {name:"Statement 1 parameters"})).toContainText("18446744073709551615");
+  const plan = await request.get("/api/evidence?path=maxwell-e2e-positive/crud-plan.json");
+  expect(plan.status()).toBe(200); expect(plan.headers()["content-type"]).toContain("text/plain");
+  expect((await request.get("/api/evidence?path=maxwell-e2e-positive/private-plan.json")).status()).toBe(404);
+  await page.evaluate(() => document.fonts.ready);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(contents).toHaveScreenshot("database-contents.png");
+});
+test("database captures distinguish empty, corrupt and differing rows and reset on run selection", async ({page}) => {
+  await open(page, "/basics?run=maxwell-e2e-positive");
+  await page.getByText("Explore database contents", {exact:true}).click();
+  const contents = page.getByRole("region", {name:"Database contents"});
+  await contents.getByLabel("Database snapshot").selectOption({label:"empty-records"});
+  await expect(contents.getByText("The table is empty.")).toHaveCount(2);
+  await expect(contents.getByText("Source and target rows match.")).toBeVisible();
+  await contents.getByLabel("Database snapshot").selectOption({label:"broken-records"});
+  await expect(contents.locator(".notice")).toContainText("broken-records-rows.json");
+  await expect(contents.getByText("Source and target rows match.")).toHaveCount(0);
+  await contents.getByLabel("Database snapshot").selectOption({label:"source"});
+  await expect(contents.getByText("Row comparison data unavailable in this capture.")).toHaveCount(2);
+  await page.getByLabel("Test run", {exact:true}).selectOption("maxwell-e2e-negative");
+  await page.getByText("Explore database contents", {exact:true}).click();
+  await expect(contents.getByText("Source and target rows differ.")).toBeVisible();
+  await expect(contents.locator('[data-database="target"]')).toContainText("wrong value");
+  await expect(contents).not.toContainText("final 你好 🐘");
+  await expect(contents.getByText("Source SQL plans", {exact:true})).toHaveCount(0);
+  await expect(page.locator(".run-result .badge")).toHaveText("passed"); // expected-failure harness verdict stays separate
+  await page.getByLabel("Test run", {exact:true}).selectOption("maxwell-e2e-startup");
+  await expect(page.getByText("Explore database contents", {exact:true})).toHaveCount(0);
+});
+test("recovery and load pages display their own saved database rows", async ({page}) => {
+  for (const [path, value] of [["/recovery?run=maxwell-phase4-fixture", "recovered value"], ["/failures?run=maxwell-phase5-workload-fixture", "load value"]]) {
+    await open(page, path);
+    await page.getByText("Explore database contents", {exact:true}).click();
+    const contents = page.getByRole("region", {name:"Database contents"});
+    await expect(contents.getByText("Source and target rows match.")).toBeVisible();
+    for (const side of ["source", "target"]) await expect(contents.locator(`[data-database="${side}"]`)).toContainText(value);
+  }
+});
+test("switching snapshots while data loads preserves the latest selection", async ({page}) => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/evidence?path=*crud-records-rows.json", async route => { await held; await route.continue(); });
+  await open(page, "/basics?run=maxwell-e2e-positive");
+  const requested = page.waitForRequest(request => request.url().includes("crud-records-rows.json"));
+  await page.getByText("Explore database contents", {exact:true}).click(); await requested;
+  await page.getByLabel("Database snapshot").selectOption({label:"empty-records"});
+  await expect(page.getByText("The table is empty.")).toHaveCount(2);
+  const completed = page.waitForResponse(response => response.url().includes("crud-records-rows.json"));
+  release(); await completed;
+  await expect(page.getByLabel("Database snapshot")).toHaveValue("maxwell-e2e-positive/empty-records");
+  await expect(page.getByText("The table is empty.")).toHaveCount(2);
+});
 for (const [name, path] of [["introduction", "/"], ["basics", "/basics?run=maxwell-e2e-positive"], ["recovery-story", "/recovery?run=maxwell-phase4-fixture"], ["failure-story", "/failures?run=maxwell-phase5-workload-fixture"]]) {
   test(`visual ${name}`, async ({page}) => {
     await open(page, path); await page.evaluate(() => document.fonts.ready);

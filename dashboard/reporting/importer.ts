@@ -267,7 +267,7 @@ async function importRun(root: string, directory: string): Promise<Run> {
   // browser payload. Container inspections/environment dumps are never linked.
   for (const entry of await readdir(resolve(root, directory), { withFileTypes: true })) {
     if (/^(?:[A-Za-z0-9_-]+-)?(?:schema|rows|diffs|inventory)\.json$/.test(entry.name) ||
-        ["checkpoints.json", "ddl-journal.json", "expected-tables.json", "latency-samples-seconds.json", "memory-samples.log", "binlog-rotation.tsv", "startup.log", "harness.log", "probe.log", "recovery.log", "queue-loss.log", "target-outage.log", "compose.log"].includes(entry.name)) await e.link(entry.name);
+        ["append-plan.json", "crud-plan.json", "schema-change-plan.json", "checkpoints.json", "ddl-journal.json", "expected-tables.json", "latency-samples-seconds.json", "memory-samples.log", "binlog-rotation.tsv", "startup.log", "harness.log", "probe.log", "recovery.log", "queue-loss.log", "target-outage.log", "compose.log"].includes(entry.name)) await e.link(entry.name);
   }
   const objectFiles = ["run-metadata.json", "host-result.json", "result.json", "suite-result.json", "configuration.json", "versions.json", "capture.json", "assertions.json", "recovery-assertions.json", "run-result.json", "observations.json", "recovery-state.json", "load-state.json", "load-metrics.json"];
   const arrayFiles = ["images.json", "replay.json", "expected-events.json", "audit.json", "ledger.json", "manifest.json", "recovery-ledger.json", "load-ledger.json", "recovery-quarantine.json"];

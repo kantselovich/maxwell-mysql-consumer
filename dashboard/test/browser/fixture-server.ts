@@ -29,6 +29,18 @@ await writeFile(join(workload, "load-metrics.json"), JSON.stringify(metrics));
 await writeFile(join(workload, "memory-samples.log"), '2026-09-28T09:00:00Z\n{"Name":"fixture-consumer-1","MemUsage":"4MiB / 8GiB"}\n{"Name":"fixture-maxwell-1","MemUsage":"200MiB / 8GiB"}\n2026-09-28T09:00:04Z\n{"Name":"fixture-consumer-1","MemUsage":"6MiB / 8GiB"}\n{"Name":"fixture-maxwell-1","MemUsage":"220MiB / 8GiB"}\n');
 await writeFile(join(artifacts, "maxwell-e2e-positive", "source-rows.json"), '[{"value":"<script>window.evidenceExecuted=true</script>"}]');
 await writeFile(join(artifacts, "maxwell-e2e-positive", "diffs.json"), '[]');
+const databaseSchema = {exists:true, engine:"InnoDB", collation:"utf8mb4_unicode_ci", columns:[{name:"id", type:"bigint unsigned", nullable:false}, {name:"value", type:"varchar(80)", nullable:true}], indexes:[{name:"PRIMARY", columns:["id"], unique:true}]};
+const databaseRows = [{id:"18446744073709551615", value:"final 你好 🐘"}, {id:"2", value:"<script>window.evidenceExecuted=true</script>"}, {id:"3", value:""}, {id:"4", value:null}, {id:"5", value:"NULL"}, ...Array.from({length:23}, (_, i) => ({id:String(i + 6), value:`row ${i + 6}`}))];
+const positive = join(artifacts, "maxwell-e2e-positive");
+await writeFile(join(positive, "crud-records-schema.json"), JSON.stringify({source:databaseSchema, target:databaseSchema, expected:databaseSchema}));
+// Numeric JSON tokens exercise the browser's lossless parser, not just string cells.
+await writeFile(join(positive, "crud-records-rows.json"), JSON.stringify({source:databaseRows, target:databaseRows, expected:databaseRows}).replaceAll('"18446744073709551615"', '18446744073709551615'));
+await writeFile(join(positive, "crud-plan.json"), JSON.stringify({name:"crud", steps:[{sql:"INSERT INTO poc.records (id, value) VALUES (?, ?)", bindings:["18446744073709551615", "final 你好 🐘"]}]}));
+await writeFile(join(positive, "empty-records-rows.json"), '{"source":[],"target":[]}');
+await writeFile(join(positive, "broken-records-rows.json"), '{broken');
+await writeFile(join(artifacts, "maxwell-e2e-negative", "crud-records-rows.json"), JSON.stringify({source:[{id:"1",value:"source value"}], target:[{id:"1", value:"wrong value"}]}));
+await writeFile(join(workload, "load_a-rows.json"), JSON.stringify({source:[{id:"1",value:"load value"}], target:[{id:"1",value:"load value"}]}));
+await writeFile(join(artifacts, "maxwell-phase4-fixture", "recovery-rows.json"), JSON.stringify({source:[{id:"1",value:"recovered value"}], target:[{id:"1",value:"recovered value"}]}));
 await writeFile(join(artifacts, "maxwell-e2e-positive", "container-inspect.json"), '{"Env":["SECRET=not-served"]}');
 await writeFile(join(artifacts, "maxwell-e2e-positive", "observations.json"), JSON.stringify({identities: ["a", "b"], dlq: [], payloads: ['{"type":"insert","database":"poc","table":"records"}', '{"type":"table-create","database":"poc","table":"records"}']}));
 for (const service of ["mysql84", "maxwell", "pubsub", "consumer", "mysql57"]) {

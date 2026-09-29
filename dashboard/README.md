@@ -32,6 +32,25 @@ Service cards show safe recorded container fields and service-log links where av
 
 The previous `/evidence` dashboard has been removed, including its overview, scenario, recovery, performance and comparison tabs. Each test page retains its own counts, assertions, comparison files, action sequence, timing charts, memory samples and run details. The `/api/evidence` file endpoint continues to serve those links.
 
+### Database contents
+
+Choose **View saved data** on either database card, or expand **Explore database contents** below the architecture. The snapshot selector lists capture names from the selected run (for example `crud-<table>`, `recovery`, or `load_a`). Workload captures with both row and schema files appear first, followed by readiness/marker captures.
+
+Source and target rows appear side by side, 25 per page. Comparison uses every saved row, ignores row ordering and preserves duplicate counts. Empty tables, absent captures, corrupt files and differing rows have distinct displays. Schema definitions show the recorded columns, types, indexes, defaults, engine and collation. Raw evidence links open the original files. This comparison is independent of the harness verdict, which also checks expected values, events and diagnostics.
+
+Values retain exact integer and decimal text, Unicode, empty strings and SQL NULL markers. `Absent` means a field was omitted from a saved row; the harness omits SQL NULL fields. Literal strings matching display markers are quoted. Database text is rendered as text nodes.
+
+**Source SQL plans** shows Phase 3 workload statements and their positional parameters when a plan was saved. These plans record intent before execution; negative self-tests can deliberately omit a planned statement. Executed-statement journaling and live-container refresh are separate follow-up work. The current view reads the selected run's saved artifacts through the existing read-only allowlist.
+
+For a retained run:
+
+```sh
+make e2e SCENARIO=crud ROWS=2 KEEP_STACK=1
+make dashboard-view
+```
+
+Open the printed run-specific dashboard link. `KEEP_STACK=1` preserves the containers for inspection; the dashboard's saved snapshots remain tied to that run. Use the cleanup command in its `retained-stack.txt` when finished.
+
 Selection is carried in `?run=...`. With no explicit selection or pinned baseline, the latest **recorded start time** wins, including failed/incomplete runs. Undated legacy attempts follow by ID and cannot honestly be placed chronologically; the UI says so. A browser-local reviewed-baseline pin is a viewing preference, not a changed test verdict. Nothing aggregates suite and child event counts.
 
 Evidence links open the full original file as inert plain text in a separate tab, preserving exact row values. The server requires a path referenced by the current report and rechecks every path component against the artifact root, rejecting traversal and symlinks. File reads are limited to 64 MiB. Container environment dumps are not allowlisted. Raw logs/payloads can still contain test data: local access is not permission to publish them. This server is for localhost, not authenticated multi-user hosting.
@@ -111,7 +130,7 @@ Tests cover correct and incorrect expected failures, corrupt/missing evidence, r
 
 `make dashboard-test` runs Chromium in the Playwright 1.63.0 Noble image pinned by digest, at Linux ARM64 (emulated on Intel), with bundled fonts, UTC/en-US, fixed fixture dates, reduced motion and 1440×1000 / 390×844 viewports. Unexpected console/page/network errors fail the gate. Numerical assertions are independent of screenshot comparisons. Browser tests do not replace replication E2E tests.
 
-Eight baseline images live under `test/browser/snapshots/`: introduction and three test pages, each at desktop and narrow sizes. Browser checks cover the harness diagram, runnable commands before the selectors, removal of the old dashboard, safe evidence links and displayed results. Review the images before committing a visual change. Updating is always explicit:
+Ten baseline images live under `test/browser/snapshots/`: introduction, three test pages and expanded database contents, each at desktop and narrow sizes. Browser checks cover the harness diagram, runnable commands before the selectors, removal of the old dashboard, safe evidence links and displayed results. Database checks cover exact values, SQL parameters, schema display, pagination, empty/corrupt/mismatched captures, run changes and overlapping snapshot loads. Review the images before committing a visual change. Updating is always explicit:
 
 ```sh
 make dashboard-test-update-snapshots

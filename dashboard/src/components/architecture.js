@@ -11,7 +11,7 @@ function stat(node, label, value, unit = "") {
   const p = el("p", undefined, "node-stat"); add(p, el("span", label), el("strong", `${valueText(value)}${value == null ? "" : unit}`)); add(node, p);
 }
 
-export function architecture(run, memory = []) {
+export function architecture(run, memory = [], inspectDatabase) {
   const diagram = el("section", undefined, "run-architecture"); diagram.setAttribute("aria-label", "Recorded replication architecture");
   add(diagram, el("h2", "What happened in this run"));
   const pipeline = el("div", undefined, "pipeline");
@@ -47,6 +47,9 @@ export function architecture(run, memory = []) {
     }
     if (run.evidence.some(r => r.path.endsWith("/compose.log"))) {
       const log = link("Service log", `/api/service-log?run=${encodeURIComponent(run.id)}&service=${service}`); log.target = "_blank"; log.rel = "noopener"; add(card, log);
+    }
+    if (inspectDatabase && (service === "mysql84" || service === "mysql57")) {
+      const button = el("button", "View saved data"); button.onclick = inspectDatabase; add(card, button);
     }
     add(pipeline, card);
   }
